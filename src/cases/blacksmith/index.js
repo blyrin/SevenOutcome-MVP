@@ -16,7 +16,7 @@ export const caseBlacksmith = {
     title: '铁匠之死',
     subtitle: '雾杉镇疑案',
     enTitle: 'THE BLACKSMITH\'S DEMISE',
-    synopsis: '铁匠汉斯倒在熄灭的锻炉旁，头部受钝器重创。<br>各怀心事的遗孀、学徒与债主——谎言与迷雾笼罩着小镇。<br>勘查现场、走访证人、拼合证据链，做出最终裁决。',
+    synopsis: '铁匠汉斯倒在冷透的锻炉旁，颅骨遭钝器重击碎裂。<br>沉默战栗的遗孀、惶恐闪烁的学徒、冷眼旁观的债主——风雪欲来的小镇，谎言与苦难在迷雾中无声撕扯。<br>勘查现场、走访证人、拼合证据链，叩问法理与人心。',
     boardSub: 'CASE FILE #01 · 铁匠汉斯·贝克命案',
     trialSub: '基于已查明的证据链，做出最终案件定性',
     defaultArea: '集市广场',

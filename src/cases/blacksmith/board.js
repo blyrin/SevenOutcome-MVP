@@ -6,25 +6,26 @@ export const SLOTS = [
 ]
 
 export const CORRECT = {
-  killer: ['clue_luke'],
+  killer: ['clue_luke', 'clue_confession'],
   weapon: ['clue_hammer'],
   motive: ['clue_wounds', 'clue_gossip', 'clue_diary'],
   method: ['clue_apron', 'clue_confession'],
 }
 
 export const WRONGMSG = {
-  'killer:clue_letter': '恐吓信只能证明巴罗曾粗暴逼债——但皮特的证词已证实他在案发前就朝镇外走去了。',
-  'killer:clue_insurance': '你指认的嫌疑人虽符合逻辑，但保险单本身并非直接行凶凭证——你需要目击行凶现场的关键人证。',
-  'killer:clue_debt': '账册批注恰恰证实巴罗绝不希望汉斯丧命——对放贷者而言，死人无法兑现半个铜板。',
-  'motive:clue_letter': '恐吓是追讨债务的手段，而非当晚铺中殊死反抗的诱因。深埋在背后的动机关乎生存与尊严。',
-  'motive:clue_insurance': '谋财害命？保单是汉斯暗自立下的，且无法解释铺中剧烈搏斗与被撕碎的衣物。',
-  'method:clue_body': '尸检报告揭示了死因与伤势，但手法要素需要更具现场动态与搏斗细节的直接物证。',
-  'method:clue_pete': '时间线锁定了案发时序，但手法要素需要还原具体搏斗反击的物质痕迹。',
+  'killer:clue_letter': '恐吓信只能证实巴罗曾粗暴逼债，但老皮特的证言证实其案发前便已离去前往镇外。',
+  'killer:clue_insurance': '保险单虽以玛莎为唯一受益人，但不足以直接证明致命行为的实施者——你需要目击证词或核心供述。',
+  'killer:clue_debt': '账册批注反证巴罗绝不希望汉斯丧命——死人无法还钱，放贷者缺乏行凶动机。',
+  'motive:clue_letter': '恐吓逼债是外部经济纠纷，而非当晚室内爆发殊死反抗的根源。深埋在背后的动机关乎绝境求生。',
+  'motive:clue_insurance': '保单系汉斯暗中投保，无法解释案发现场的惨烈搏斗与撕碎衣物。这不是一场谋财害命。',
+  'method:clue_body': '尸检报告锁定了致死伤情与逆向创口，但手法要素需要更具现场动态与搏杀撕扯的直接物证。',
+  'method:clue_pete': '时间线锁定了案发时序，但手法要素需要还原室内贴身搏斗与反击抗争的物质痕迹。',
 }
 
 export function getDeduceText(b) {
   const mtxt = b.motive === 'clue_wounds'
-    ? '长年家庭暴力的阴影'
-    : (b.motive === 'clue_diary' ? '血泪日记记录的绝望深渊' : '整条街巷心照不宣的苦难')
-  return `玛莎·贝克在${ mtxt }中，于昨夜暴徒施暴的生死危局里拼死自卫，抓起炉边铁锤挥出了绝望的反击——这是悲剧性的紧急自卫，绝非蓄意谋杀。`
+    ? '长年累月遭受暴虐摧残的深渊'
+    : (b.motive === 'clue_diary' ? '血泪日记所控诉的八年家庭暴力绝境' : '整条街坊心照不宣的暴虐苦难')
+  const ktxt = b.killer === 'clue_luke' ? '学徒卢克的目击证词与遗孀玛莎的现场痕迹' : '玛莎·贝克的自首供述与现场撕斗物证'
+  return `综合${ ktxt }，玛莎身陷${ mtxt }，在昨夜汉斯醉酒施暴、濒临窒息的极度危局之中拼死挣扎，摸起炉边铁锤逆向挥出了求生反击——此案系极端暴力威胁下的紧急自卫，绝非蓄意谋杀。`
 }

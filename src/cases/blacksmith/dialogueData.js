@@ -124,6 +124,11 @@ export const DLG = {
                 gainXP(10, '专业的提问')
               }, next: 'c',
             },
+            {
+              t: '关于那道逆向上扬的致命创口……',
+              cond: () => G.clues.includes('clue_body') && f.bodyDetail,
+              next: 'c',
+            },
             { t: '明白了。', next: null }],
         },
         b: {
@@ -146,12 +151,12 @@ export const DLG = {
       start: 'a', nodes: {
         a: {
           ...aLine, ch: [
-            { t: '你丈夫死了，夫人。请节哀。', next: 'b' },
-            { t: '昨晚你在哪里？', next: 'c' },
+            { t: '你丈夫死了，夫人。请节哀。', cond: () => !f.marthaConfessed, next: 'b' },
+            { t: '昨晚你在哪里？', cond: () => !f.marthaConfessed, next: 'c' },
             {
               t: '【心理学 5】你在害怕。不是怕凶手——是怕我们查出什么。',
               req: { psy: 5 },
-              cond: () => !G.clues.includes('clue_wounds'),
+              cond: () => !G.clues.includes('clue_wounds') && !f.marthaConfessed,
               act: () => {
                 checkFX('psy', 5)
                 addClue('clue_wounds')
@@ -162,7 +167,7 @@ export const DLG = {
             {
               t: '【洞察力 5】（她袖口下，有淡淡的淤青。）',
               req: { ins: 5 },
-              cond: () => !G.clues.includes('clue_wounds'),
+              cond: () => !G.clues.includes('clue_wounds') && !f.marthaConfessed,
               act: () => {
                 checkFX('ins', 5)
                 addClue('clue_wounds')
@@ -171,7 +176,7 @@ export const DLG = {
             },
             {
               t: '他对你做过什么？',
-              cond: () => G.clues.includes('clue_wounds') && !f.diaryHint,
+              cond: () => G.clues.includes('clue_wounds') && !f.diaryHint && !f.marthaConfessed,
               act: () => {f.diaryHint = 1},
               next: 'e',
             },
@@ -184,6 +189,17 @@ export const DLG = {
                 gainXP(20, '真相的重量')
               },
               next: 'f',
+            },
+            {
+              t: '昨晚你为什么会穿便鞋去铁匠铺？',
+              cond: () => f.marthaConfessed && !f.marthaWhyForge,
+              act: () => {f.marthaWhyForge = 1},
+              next: 'why_forge',
+            },
+            {
+              t: '安心，法庭会听见真正的真相。',
+              cond: () => f.marthaConfessed,
+              next: 'comfort',
             },
             { t: '（离开）', next: null }],
         },
@@ -199,6 +215,14 @@ export const DLG = {
         },
         f: {
           ...line('martha_f'),
+          ch: [{ t: '（离开）', next: null }],
+        },
+        why_forge: {
+          ...line('martha_why_forge'),
+          ch: [{ t: '（记下供词）', next: 'a' }],
+        },
+        comfort: {
+          ...line('martha_comfort'),
           ch: [{ t: '（离开）', next: null }],
         },
       },
@@ -240,6 +264,12 @@ export const DLG = {
                 addClue('clue_luke')
                 gainXP(10, '撬开沉默')
               }, next: 'c',
+            },
+            {
+              t: '（出示铁锤）这把锤子，你认得吗？',
+              cond: () => G.clues.includes('clue_hammer') && !G.clues.includes('clue_luke'),
+              act: () => addClue('clue_luke'),
+              next: 'c',
             },
             { t: '（先不逼他）', next: 'a' }],
         },
@@ -338,7 +368,16 @@ export const DLG = {
               },
               next: 'c',
             },
-            { t: '让我看看账本。', cond: () => !G.clues.includes('clue_debt') && G.attrs.strw < 4, next: 'cref' },
+            {
+              t: '（出示催债恐吓信）你信里扬言要拆铺。想洗脱凶嫌，就把账本拿出来！',
+              cond: () => G.clues.includes('clue_letter') && !G.clues.includes('clue_debt'),
+              act: () => {
+                addClue('clue_debt')
+                gainXP(10, '物证对质')
+              },
+              next: 'c',
+            },
+            { t: '让我看看账本。', cond: () => !G.clues.includes('clue_debt') && G.attrs.strw < 4 && !G.clues.includes('clue_letter'), next: 'cref' },
             {
               t: '（出示保险单）这个，你认得吗？',
               cond: () => G.clues.includes('clue_insurance') && !f.insAsked,

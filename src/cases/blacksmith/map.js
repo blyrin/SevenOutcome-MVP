@@ -1131,16 +1131,16 @@ export function onInteract(id, ctx) {
     case 'body':
       setFlag('seenBody')
       ctx.refreshObjectives()
-      flavor('body', '白色粉笔人形轮廓静静躺在血泊中。大片暗红血迹已经发黑干涸——找验尸官贝尔谈谈吧。')
+      flavor('body', '白色粉笔勾勒出汉斯倒毙的扭曲轮廓。大片暗红血泊已经凝固发黑，四周泥灰被踩得凌乱不堪——验尸官贝尔正在一旁查验致命伤痕。')
       break
     case 'anvil':
-      flavor('anvil', '沉重的铁砧表面布满凹凸的锤痕。最新的一道锋利划痕泛着冷光——像一道新鲜的创口。')
+      flavor('anvil', '粗粝厚重的铁砧上坑洼交错。平整的台面边缘留有一道新鲜劈出的锐利擦痕——似乎是不久前猛烈器械撞击留下的。')
       break
     case 'forge':
-      flavor('forge', '锻炉早已经彻底冷透了。冰冷的灰烬里斜插着半截烧焦的拨火铁棍。')
+      flavor('forge', '炉火早已熄灭冷透，余温散尽。灰白色的炉渣里斜插着半截烧焦的拨火棍，地面落满了煤屑与厚厚的灰尘。')
       break
     case 'fountain':
-      flavor('fountain', '喷泉的水面映着月光。水底沉着几枚铜币——雾杉镇的人相信，水会记住愿望。')
+      flavor('fountain', '广场中央的石砌喷泉，泛着微冷的波光。池底沉着几枚被水流磨平的薄铜板——镇民们常在这里祈求安宁。')
       break
     case 'barrels':
       if (G.clues.includes('clue_apron')) {
@@ -1151,7 +1151,7 @@ export function onInteract(id, ctx) {
         checkFX('ins', 3)
         addClue('clue_apron')
       } else {
-        failFX('ins', 3, '木桶后的阴影里似乎有什么……但你看不真切。')
+        failFX('ins', 3, '木桶后幽暗的阴影里隐约有一块碎布……但光线太暗，你辨认不清细节。')
       }
       break
     case 'moneybox':
@@ -1160,7 +1160,7 @@ export function onInteract(id, ctx) {
         break
       }
       if (!hasFlag('peteTip')) {
-        toast('床下塞着个上锁的钱匣。也许有人知道它的秘密。')
+        toast('床下塞着个生锈的暗锁铁匣。锁孔精巧，也许镇上有人知晓汉斯藏东西的习惯。')
         break
       }
       if (G.attrs.int >= 4) {
@@ -1170,7 +1170,7 @@ export function onInteract(id, ctx) {
         checkFX('strw', 3)
         addClue('clue_insurance')
       } else {
-        failFX('int', 4, '锁很结实。撬不开，也套不出话。')
+        failFX('int', 4, '黄铜暗锁咬合紧密。在没有技巧或门道的情况下，很难强行打开。')
       }
       break
     case 'dresser':
@@ -1186,7 +1186,7 @@ export function onInteract(id, ctx) {
         addClue('clue_diary')
         toast('抽屉缝里露出一角纸页——一本日记。（未经女主人的许可）')
       } else {
-        failFX('ins', 4, '抽屉上了锁。也许该先问问这屋子的主人。')
+        failFX('ins', 4, '梳妆台抽屉上了锁。私自翻弄不太妥当，也许该先听听女主人的心声。')
       }
       break
     case 'wallet':
