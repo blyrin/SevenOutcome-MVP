@@ -268,6 +268,10 @@ export function updatePlayer(dt: number): void {
     }
   }
 
+  const curCase = getCurrentCase()
+  const targetY = curCase?.map?.getHeightAt ? curCase.map.getHeightAt(player.position.x, player.position.z) : 0
+  player.position.y = lerp(player.position.y, targetY, 1 - Math.exp(-24 * dt))
+
   const zn = zoneAt(player.position.x, player.position.z)
   const prefix = (getCurrentCase()?.subtitle || '雾杉镇') + ' · '
   const curArea = zn ? zn.n : '郊野'
@@ -285,10 +289,10 @@ export function updatePlayer(dt: number): void {
     .add(new THREE.Vector3(camOff.x * camZoom, camOff.y * camZoom, camOff.z * camZoom))
   if (camera.position.distanceTo(target) > 28) {
     camera.position.copy(target)
-    camLookTarget.set(player.position.x, 1, player.position.z)
+    camLookTarget.set(player.position.x, player.position.y + 1, player.position.z)
   } else {
     camera.position.lerp(target, 1 - Math.exp(-9 * dt))
-    const lookTarget = new THREE.Vector3(player.position.x, 1, player.position.z)
+    const lookTarget = new THREE.Vector3(player.position.x, player.position.y + 1, player.position.z)
     camLookTarget.lerp(lookTarget, 1 - Math.exp(-14 * dt))
   }
   camera.lookAt(camLookTarget)
@@ -422,7 +426,8 @@ export function initControlsEvents(): void {
       mouseV.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1)
       ray.setFromCamera(mouseV, camera)
       const pt = new THREE.Vector3()
-      if (ray.ray.intersectPlane(groundPlane, pt)) {
+      const clickPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -player.position.y)
+      if (ray.ray.intersectPlane(clickPlane, pt)) {
         moveTo(pt.x, pt.z)
       }
     }

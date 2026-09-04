@@ -240,6 +240,7 @@ export interface CaseMap {
   openGate?: (G: GameState, setFlagFn: (k: string, v?: FlagValue) => void) => void
   applyWorldFromFlags?: (G: GameState) => void
   zoneAt?: (x: number, z: number) => { id: string; n: string } | null
+  getHeightAt?: (x: number, z: number) => number
   NPCS?: Record<string, NpcConfig | NpcEntity>
 }
 

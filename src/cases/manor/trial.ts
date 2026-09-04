@@ -2,18 +2,14 @@ import { CLUE_TOTAL } from './clues'
 import type { EpilogueData, GameState, TimelineItem, VerdictCard } from '../../types'
 
 export const TIMELINE: TimelineItem[] = [
-  { t: '21:00', tx: '艾莲娜夫人将调配好的安神晚安红茶端进二楼书房', need: 'clue_tea_cup' },
-  { t: '21:15', tx: '男爵剧烈呛咳嫌茶水过烫，一巴掌打翻茶杯，毒茶全数浸入地毯', need: 'clue_eleanor_herbs' },
-  { t: '22:30', tx: '男爵感到肺痛难忍，点燃了书桌上的沉香止痛特制蜡烛', need: 'clue_candle' },
-  { t: '23:15', tx: '凡森特医生轻步穿过二楼挑空回廊，返回医务室观察书房烛光', need: 'clue_piano_witness' },
-  { t: '23:30', tx: '蜡烛燃至基座，雪上乌头碱汽化为致命毒雾；男爵呼吸麻痹倒地猝亡', need: 'clue_autopsy_vane' },
-  { t: '23:45', tx: '机械大钟重锤下坠拉死黄铜门栓，连接丝弦受热熔脱，密室锁闭完成', need: 'clue_clock_device' },
-  {
-    t: '00:05',
-    tx: '长子朱利安为偷盗债券溜入书房，惊见死尸后慌乱补刺纯银拆信刀伪造盗匪行凶',
-    need: 'clue_julian_gloves',
-  },
-  { t: '00:15', tx: '老管家莫里斯送夜宵发现反锁，与托马斯巡士合力撞开房门保护现场', need: null },
+  { t: '21:00', tx: '艾莲娜夫人将混有苦扁桃毒素的安神红茶端入书房，男爵嫌烫搁置桌角未曾饮用', need: 'clue_tea_cup' },
+  { t: '22:30', tx: '男爵因肺痛难忍，点燃了暗藏乌头碱注射针孔的沉香止痛特制蜡烛', need: 'clue_candle' },
+  { t: '23:15', tx: '凡森特医生走过二楼回廊确认机关就位，虚掩房门后返回医务室', need: 'clue_footprints' },
+  { t: '23:30', tx: '蜡烛烧至基座，高纯度乌头碱蒸发为致命毒雾；男爵抽搐扫翻茶杯、室颤窒息倒地', need: 'clue_autopsy_vane' },
+  { t: '23:35', tx: '长子朱利安潜入盗取债券，惊见死尸恐慌补刺家徽银刀伪造强盗刺杀后带门逃离', need: 'clue_julian_gloves' },
+  { t: '23:45', tx: '机械大钟重锤下坠拉死内侧黄铜门栓，熔锡受热脱开收回丝弦，反锁密室构成', need: 'clue_clock_device' },
+  { t: '23:50', tx: '老管家莫里斯上楼送药茶，发现房门从内反锁且透着烛光，数次叩门毫无应答', need: 'clue_will_remnant' },
+  { t: '00:00', tx: '午夜钟鸣，莫里斯与托马斯合力破门；盲女塞西莉亚绝对音感印证各阶段声响', need: 'clue_piano_witness' },
 ]
 
 export function getVerdictCards(wrongPath: boolean, G: GameState): VerdictCard[] {

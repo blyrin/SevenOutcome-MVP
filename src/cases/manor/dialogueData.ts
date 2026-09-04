@@ -141,6 +141,15 @@ export const DLG: Record<string, () => DialogueTree> = {
               },
               next: 'mine',
             },
+            {
+              t: '出示未烧尽的遗嘱残页：男爵如此丧心病狂，当年矿难到底藏着什么隐情？',
+              cond: () => !f.mineAsked && G.clues.includes('clue_will_remnant'),
+              act: () => {
+                f.mineAsked = 1
+                gainXP(15, '以物证触动老管家')
+              },
+              next: 'mine',
+            },
             { t: '（稍后再谈）', next: null },
           ],
         },
@@ -161,6 +170,15 @@ export const DLG: Record<string, () => DialogueTree> = {
                 checkFX('kno', 4)
                 f.mineAsked = 1
                 gainXP(20, '挖掘矿难秘辛')
+              },
+              next: 'mine',
+            },
+            {
+              t: '出示遗嘱残页追问：二十年前黑杉矿难的真相究竟是什么？',
+              cond: () => !f.mineAsked && G.clues.includes('clue_will_remnant'),
+              act: () => {
+                f.mineAsked = 1
+                gainXP(15, '以物证触动老管家')
               },
               next: 'mine',
             },
@@ -279,7 +297,7 @@ export const DLG: Record<string, () => DialogueTree> = {
           ...line('eleanor_tea'),
           ch: [
             {
-              t: '取出温室搜查到的手记。',
+              t: '记录艾莲娜的口供，获悉温室隐秘手记的所在。',
               act: () => {
                 addClue('clue_eleanor_herbs')
               },
@@ -318,6 +336,15 @@ export const DLG: Record<string, () => DialogueTree> = {
               next: 'knife',
             },
             {
+              t: '出示尸检报告：创口全无生活反应，你在他死后补刺是为了掩盖什么？',
+              cond: () => G.clues.includes('clue_autopsy_vane'),
+              act: () => {
+                f.julianConfessed = 1
+                gainXP(15, '以尸检铁证攻破心防')
+              },
+              next: 'knife',
+            },
+            {
               t: '你的家徽银刀插在死者胸口，你该怎么解释？',
               act: () => { f.julianTalked = 1 },
               next: 'again',
@@ -336,6 +363,15 @@ export const DLG: Record<string, () => DialogueTree> = {
                 checkFX('ins', 4)
                 f.julianConfessed = 1
                 gainXP(20, '戳穿死后伪刺')
+              },
+              next: 'knife',
+            },
+            {
+              t: '出示尸检记录：男爵死于乌头碱中毒，胸前银刀是死后补刺的伪证！',
+              cond: () => !f.julianConfessed && G.clues.includes('clue_autopsy_vane'),
+              act: () => {
+                f.julianConfessed = 1
+                gainXP(15, '以尸检铁证攻破心防')
               },
               next: 'knife',
             },
@@ -396,11 +432,11 @@ export const DLG: Record<string, () => DialogueTree> = {
               next: 'medical',
             },
             {
-              t: '【逻辑 5】注射器里的熔蜡、蜡芯针孔、二十年前矿难合伙人幼子……全对上了！',
-              req: { int: 5 },
+              t: '【逻辑 4】注射器里的熔蜡、蜡芯针孔、二十年前矿难合伙人幼子……全对上了！',
+              req: { int: 4 },
               cond: () => G.clues.includes('clue_syringe') && G.clues.includes('clue_mine_ledger'),
               act: () => {
-                checkFX('int', 5)
+                checkFX('int', 4)
                 f.vincentConfessed = 1
                 gainXP(30, '铁证终极对峙')
               },
@@ -414,12 +450,12 @@ export const DLG: Record<string, () => DialogueTree> = {
           ch: [
             { t: '再谈谈男爵的哮喘与止痛蜡烛。', next: 'medical' },
             {
-              t: '【逻辑 5】理查德的儿子……凡森特医生，这场死局是你量身定做的吧？',
-              req: { int: 5 },
+              t: '【逻辑 4】理查德的儿子……凡森特医生，这场死局是你量身定做的吧？',
+              req: { int: 4 },
               cond: () => G.clues.includes('clue_syringe') && G.clues.includes('clue_mine_ledger') &&
                 !f.vincentConfessed,
               act: () => {
-                checkFX('int', 5)
+                checkFX('int', 4)
                 f.vincentConfessed = 1
                 gainXP(30, '铁证终极对峙')
               },

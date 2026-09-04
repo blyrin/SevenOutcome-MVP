@@ -926,7 +926,8 @@ export function updateAtmosphere(dt: number, now: number): void {
   if (!mistGeo || !sparkGeo || !smokeGeo || !rainGeo || !splashGeo || !fDropGeo || !moteGeo) {
     return
   }
-  const mPos = mistGeo.attributes.position.array as Float32Array
+  const mPosAttr = mistGeo.getAttribute('position') as THREE.BufferAttribute
+  const mPos = mPosAttr.array as Float32Array
   for (let i = 0; i < mistCount; i++) {
     const idx = i * 3
     const v = mistVel[i]
@@ -937,10 +938,12 @@ export function updateAtmosphere(dt: number, now: number): void {
       mPos[idx] = 42
     }
   }
-  mistGeo.attributes.position.needsUpdate = true
+  mPosAttr.needsUpdate = true
 
-  const sPos = sparkGeo.attributes.position.array as Float32Array
-  const sCol = sparkGeo.attributes.color.array as Float32Array
+  const sPosAttr = sparkGeo.getAttribute('position') as THREE.BufferAttribute
+  const sColAttr = sparkGeo.getAttribute('color') as THREE.BufferAttribute
+  const sPos = sPosAttr.array as Float32Array
+  const sCol = sColAttr.array as Float32Array
   for (let i = 0; i < sparkCount; i++) {
     const idx = i * 3
     const d = sparkData[i]
@@ -969,10 +972,11 @@ export function updateAtmosphere(dt: number, now: number): void {
       d.vz = rand(-0.18, 0.18)
     }
   }
-  sparkGeo.attributes.position.needsUpdate = true
-  sparkGeo.attributes.color.needsUpdate = true
+  sPosAttr.needsUpdate = true
+  sColAttr.needsUpdate = true
 
-  const smPos = smokeGeo.attributes.position.array as Float32Array
+  const smPosAttr = smokeGeo.getAttribute('position') as THREE.BufferAttribute
+  const smPos = smPosAttr.array as Float32Array
   for (let i = 0; i < smokeCount; i++) {
     const idx = i * 3
     const d = smokeData[i]
@@ -986,9 +990,10 @@ export function updateAtmosphere(dt: number, now: number): void {
       smPos[idx + 2] = -18.15 + rand(-0.2, 0.2)
     }
   }
-  smokeGeo.attributes.position.needsUpdate = true
+  smPosAttr.needsUpdate = true
 
-  const rPos = rainGeo.attributes.position.array as Float32Array
+  const rPosAttr = rainGeo.getAttribute('position') as THREE.BufferAttribute
+  const rPos = rPosAttr.array as Float32Array
   for (let i = 0; i < rainCount; i++) {
     const idx = i * 3
     rPos[idx + 1] -= rainVel[i] * dt
@@ -999,9 +1004,10 @@ export function updateAtmosphere(dt: number, now: number): void {
       rPos[idx + 2] = rand(-28, 28)
     }
   }
-  rainGeo.attributes.position.needsUpdate = true
+  rPosAttr.needsUpdate = true
 
-  const spPos = splashGeo.attributes.position.array as Float32Array
+  const spPosAttr = splashGeo.getAttribute('position') as THREE.BufferAttribute
+  const spPos = spPosAttr.array as Float32Array
   for (let i = 0; i < splashCount; i++) {
     const idx = i * 3
     const d = splashData[i]
@@ -1013,9 +1019,10 @@ export function updateAtmosphere(dt: number, now: number): void {
       spPos[idx + 2] = rand(-26, 26)
     }
   }
-  splashGeo.attributes.position.needsUpdate = true
+  spPosAttr.needsUpdate = true
 
-  const fdPos = fDropGeo.attributes.position.array as Float32Array
+  const fdPosAttr = fDropGeo.getAttribute('position') as THREE.BufferAttribute
+  const fdPos = fdPosAttr.array as Float32Array
   for (let i = 0; i < fDropletCount; i++) {
     const idx = i * 3
     const v = fDropVel[i]
@@ -1036,9 +1043,10 @@ export function updateAtmosphere(dt: number, now: number): void {
       v.vz = Math.sin(ang) * spd
     }
   }
-  fDropGeo.attributes.position.needsUpdate = true
+  fdPosAttr.needsUpdate = true
 
-  const mtPos = moteGeo.attributes.position.array as Float32Array
+  const mtPosAttr = moteGeo.getAttribute('position') as THREE.BufferAttribute
+  const mtPos = mtPosAttr.array as Float32Array
   for (let i = 0; i < moteCount; i++) {
     const idx = i * 3
     const d = moteData[i]
@@ -1047,7 +1055,7 @@ export function updateAtmosphere(dt: number, now: number): void {
     mtPos[idx + 1] = 3.52 + Math.sin(now / 500 + d.bob) * 0.35
     mtPos[idx + 2] = d.lz + Math.sin(d.ang) * d.rad
   }
-  moteGeo.attributes.position.needsUpdate = true
+  mtPosAttr.needsUpdate = true
 }
 
 export function update(dt: number, now: number): void {
