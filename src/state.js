@@ -1,8 +1,7 @@
 import { sfx } from './audio.js'
-import { CLUES, ITEMS } from './clues.js'
 import { openLevelup, refreshHUD, refreshObjectives } from './ui.js'
 import { $, ATTR_LABELS } from './utils.js'
-import { openGate } from './world.js'
+import { getCurrentCase } from './cases/caseManager.js'
 
 export const G = {
   attrs: { int: 4, ins: 3, psy: 3, strw: 2, kno: 2 },
@@ -87,8 +86,8 @@ export function confirmBox(txt, onYes) {
 export function checkFX(attr, dc) {
   G.checks++
   const cr = $('checkRoll')
-  cr.querySelector('.cr1').textContent = `${ATTR_LABELS[attr]} 检定（需求 ${dc}）`
-  cr.querySelector('.cr2').textContent = `${G.attrs[attr]} · 检定通过`
+  cr.querySelector('.cr1').textContent = `${ ATTR_LABELS[attr] } 检定（需求 ${ dc }）`
+  cr.querySelector('.cr2').textContent = `${ G.attrs[attr] } · 检定通过`
   cr.classList.remove('on')
   void cr.offsetWidth
   cr.classList.add('on')
@@ -96,13 +95,13 @@ export function checkFX(attr, dc) {
 }
 
 export function failFX(attr, dc, msg) {
-  toast(msg || `【${ATTR_LABELS[attr]}】未达标（需 ${dc}）`)
+  toast(msg || `【${ ATTR_LABELS[attr] }】未达标（需 ${ dc }）`)
   sfx('fail')
 }
 
 export function gainXP(n, why) {
   G.xp += n
-  toast(`+${n} 经验 · ${why}`, 'xp')
+  toast(`+${ n } 经验 · ${ why }`, 'xp')
   let leveled = false
   while (G.xp >= xpNeed(G.level)) {
     G.xp -= xpNeed(G.level)
@@ -112,7 +111,7 @@ export function gainXP(n, why) {
   }
   if (leveled) {
     sfx('levelup')
-    banner('特质提升', `已升至 Lv.${G.level} · 获得 2 点属性点`, 2800)
+    banner('特质提升', `已升至 Lv.${ G.level } · 获得 2 点属性点`, 2800)
     setTimeout(() => {
       if (!modalOpen()) {
         openLevelup()
@@ -127,16 +126,17 @@ export function addClue(id, silent) {
     return
   }
   G.clues.push(id)
-  const c = CLUES[id]
-  if (!silent) {
+  const curCase = getCurrentCase()
+  const c = curCase && curCase.clues ? curCase.clues[id] : null
+  if (!silent && c) {
     sfx('clue')
     showClueCard(c)
     gainXP(15, '获得线索')
-    if (ITEMS[id] && !G.inventory.includes(id)) {
+    if (curCase.items && curCase.items[id] && !G.inventory.includes(id)) {
       G.inventory.push(id)
     }
   }
-  foreshadowOnClue()
+  foreshadowOnClue(id)
   refreshObjectives()
 }
 
@@ -156,27 +156,35 @@ export function showClueCard(c) {
   const p = $('cluePop')
   p.querySelector('.ct').textContent = c.icon + ' ' + c.name
   p.querySelector('.cd').textContent = c.short
-  p.querySelector('.tags').innerHTML = c.tags.map(t => `<span class="tag">${t}</span>`).join('')
+  p.querySelector('.tags').innerHTML = c.tags.map(t => `<span class="tag">${ t }</span>`).join('')
   p.classList.add('on')
   clearTimeout(cluePopT)
   cluePopT = setTimeout(() => p.classList.remove('on'), 3600)
 }
 
 export function watchForeshadow(k) {
-  if (k === 'walletReturned') {
-    banner('🦋 因 果 回 响', '善举会被记住——皮特想起了那个夜晚，暗巷的栅栏门也为你打开。', 4200)
-    openGate()
-  }
-  if (k === 'deductionCorrect') {
-    banner('真 相 拼 合', '推论成立。去向这个镇子宣布你的裁决吧。', 3800)
-    sfx('success')
-    refreshObjectives()
+  const curCase = getCurrentCase()
+  if (curCase && curCase.map && curCase.map.onFlagChange) {
+    curCase.map.onFlagChange(k, G.flags[k], { G, setFlag, hasFlag, toast, sfx, refreshObjectives })
   }
 }
 
-export function foreshadowOnClue() {
-  if (G.clues.length === 3 && !hasFlag('boardHint')) {
-    setFlag('boardHint')
-    setTimeout(() => toast('线索渐多——按 B 打开告示板，把它们拼成真相'), 1500)
+export function foreshadowOnClue(clueId) {
+  const curCase = getCurrentCase()
+  if (curCase && curCase.map && curCase.map.onClueAdded) {
+    curCase.map.onClueAdded(clueId, { G, setFlag, hasFlag, toast, sfx })
   }
+}
+
+export function resetCaseState() {
+  G.flags = {}
+  G.clues = []
+  G.inventory = []
+  G.zones = {}
+  G.talked = {}
+  G.board = { killer: null, weapon: null, motive: null, method: null }
+  G.history = []
+  G.verdict = null
+  G.flavorXP = {}
+  G.checks = 0
 }

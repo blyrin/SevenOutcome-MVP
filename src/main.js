@@ -7,15 +7,17 @@ import { initDialogueDOMEvents, startDialogue } from './dialogue.js'
 import { dlgOpen, G, initModalEvents, modalOpen, toast } from './state.js'
 import { drawMinimap, initUIEvents, refreshHUD, refreshObjectives, updateInv } from './ui.js'
 import { $, dist2, lerp } from './utils.js'
-import {
-  applyWorldFromFlags, camera, composer, embers, ensureScanLabel, forgeLight, fwater, hamRing, ITAB, labels, NPCS, player, renderer, scene, updateAtmosphere,
-} from './world.js'
+import { applyWorldFromFlags, camera, composer, ensureScanLabel, ITAB, labels, NPCS, player } from './world.js'
+import { caseBlacksmith } from './cases/blacksmith/index.js'
+import { getCurrentCase, loadCase } from './cases/caseManager.js'
 
 initModalEvents()
 initBoardEvents()
 initUIEvents()
 initControlsEvents()
 initDialogueDOMEvents()
+
+loadCase(caseBlacksmith)
 
 let lastT = performance.now()
 const v = new THREE.Vector3()
@@ -34,7 +36,11 @@ function animate() {
 
   for (const k in NPCS) {
     const d = NPCS[k]
-    d.mesh.children[0].position.y = 0.9 + Math.sin(now / 900 + d.mesh.userData.bob) * 0.02
+    if (!d || !d.mesh || !d.mesh.children || !d.mesh.children[0]) {
+      continue
+    }
+    const baseY = d.mesh.userData.baseTorsoY || 0.82
+    d.mesh.children[0].position.y = baseY + Math.sin(now / 900 + (d.mesh.userData.bob || 0)) * 0.02
     const dd = dist2(player.position.x, player.position.z, d.pos[0], d.pos[1])
     if (dd < 7) {
       const ty = Math.atan2(player.position.x - d.pos[0], player.position.z - d.pos[1])
@@ -42,17 +48,10 @@ function animate() {
     }
   }
 
-  const pu = (Math.sin(now / 300) + 1) / 2
-  hamRing.material.opacity = ITAB.hammer.hidden ? 0 : 0.25 + pu * 0.35
-  hamRing.scale.setScalar(1 + pu * 0.12)
-  embers.material.color.setHSL(0.05, 0.95, 0.42 + pu * 0.14)
-  if (embers.material.emissiveIntensity !== undefined) {
-    embers.material.emissiveIntensity = 2.0 + pu * 0.9
+  const curCase = getCurrentCase()
+  if (curCase && curCase.map && curCase.map.update) {
+    curCase.map.update(dt, now)
   }
-  forgeLight.intensity = 0.7 + pu * 0.4
-  fwater.material.color.setHSL(0.55, 0.4, 0.26 + Math.sin(now / 700) * 0.03)
-
-  updateAtmosphere(dt, now)
 
   for (const id in ITAB) {
     const it = ITAB[id]
@@ -60,6 +59,9 @@ function animate() {
       continue
     }
     const el = ensureScanLabel(id)
+    if (!el) {
+      continue
+    }
     if (scanning && G.started) {
       const p = it.mesh.getWorldPosition(new THREE.Vector3())
       const dd = dist2(player.position.x, player.position.z, p.x, p.z)
@@ -95,12 +97,17 @@ $('btnStart').onclick = () => {
   G.started = true
   refreshHUD()
   refreshObjectives()
-  setTimeout(() => {
-    startDialogue('sheriff')
-  }, 1200)
+  const curCase = getCurrentCase()
+  const startNpc = curCase?.meta?.startNpc
+  if (startNpc) {
+    setTimeout(() => {
+      startDialogue(startNpc)
+    }, 1200)
+  }
+  const startHint = curCase?.meta?.startHint || '点击地面移动 · 按住 Tab 感知周围交互目标'
   setTimeout(() => {
     if (!path.length) {
-      toast('点击地面移动 · 按住 Tab 感知周围交互目标')
+      toast(startHint)
     }
   }, 600)
 }

@@ -1,8 +1,18 @@
 import { line } from './dialogueLines.js'
-import { addClue, checkFX, closeModal, G, gainXP, removeItem, setFlag } from './state.js'
-import { openTrial } from './trial.js'
-import { refreshObjectives } from './ui.js'
-import { openGate } from './world.js'
+import { addClue, checkFX, closeModal, G, gainXP, removeItem, setFlag } from '../../state.js'
+import { openTrial } from '../../trial.js'
+import { refreshObjectives } from '../../ui.js'
+import { openGate } from './map.js'
+
+export const NPC_PROFILES = {
+  sheriff: { title: '治安警官', role: '现场封锁与初查负责', color: '#6898d0' },
+  coroner: { title: '法医官', role: '死因鉴定与伤痕检验', color: '#7fa6b3' },
+  martha: { title: '死者遗孀', role: '第一发现人与重大嫌疑人', color: '#b97ca8' },
+  luke: { title: '铁匠学徒', role: '案发当晚目击证人', color: '#c89d68' },
+  pete: { title: '酒馆酒客', role: '当晚行踪目击证人', color: '#7ea86d' },
+  barrow: { title: '高利贷主', role: '主要债权人与恐吓嫌犯', color: '#d06868' },
+  greta: { title: '附近邻舍', role: '长期家庭矛盾目击者', color: '#c8a87c' },
+}
 
 export const DLG = {
   sheriff() {
@@ -62,7 +72,12 @@ export const DLG = {
             : (G.clues.length ? line('sheriff_hub_clues', G.clues.length) : line('sheriff_hub_default'))),
           ch: [
             { t: '谈谈嫌疑人们。', next: 'sum' },
-            { t: '关于那两种鞋印……', cond: () => f.caseStarted && !f.printAsked, act: () => {f.printAsked = 1}, next: 'prints' },
+            {
+              t: '关于那两种鞋印……',
+              cond: () => f.caseStarted && !f.printAsked,
+              act: () => {f.printAsked = 1},
+              next: 'prints',
+            },
             {
               t: '【智力 5】把案发时间线给我复述一遍。', req: { int: 5 }, cond: () => !f.timelineBrief, act: () => {
                 checkFX('int', 5)
@@ -145,18 +160,30 @@ export const DLG = {
               next: 'd',
             },
             {
-              t: '【洞察力 5】（她袖口下，有淡淡的淤青。）', req: { ins: 5 }, cond: () => !G.clues.includes('clue_wounds'), act: () => {
+              t: '【洞察力 5】（她袖口下，有淡淡的淤青。）',
+              req: { ins: 5 },
+              cond: () => !G.clues.includes('clue_wounds'),
+              act: () => {
                 checkFX('ins', 5)
                 addClue('clue_wounds')
-              }, next: 'd',
+              },
+              next: 'd',
             },
-            { t: '他对你做过什么？', cond: () => G.clues.includes('clue_wounds') && !f.diaryHint, act: () => {f.diaryHint = 1}, next: 'e' },
             {
-              t: '（出示日记）我读了你的日记，玛莎。', cond: () => G.clues.includes('clue_diary') && !f.marthaConfessed, act: () => {
+              t: '他对你做过什么？',
+              cond: () => G.clues.includes('clue_wounds') && !f.diaryHint,
+              act: () => {f.diaryHint = 1},
+              next: 'e',
+            },
+            {
+              t: '（出示日记）我读了你的日记，玛莎。',
+              cond: () => G.clues.includes('clue_diary') && !f.marthaConfessed,
+              act: () => {
                 f.marthaConfessed = 1
                 addClue('clue_confession')
                 gainXP(20, '真相的重量')
-              }, next: 'f',
+              },
+              next: 'f',
             },
             { t: '（离开）', next: null }],
         },
@@ -186,11 +213,15 @@ export const DLG = {
           ch: [
             { t: '昨晚你在哪里？', cond: () => !G.clues.includes('clue_luke'), next: 'b' },
             {
-              t: '【心理学 4】你在撒谎。你的眼睛一直在躲那把锤子。', req: { psy: 4 }, cond: () => !G.clues.includes('clue_luke'), act: () => {
+              t: '【心理学 4】你在撒谎。你的眼睛一直在躲那把锤子。',
+              req: { psy: 4 },
+              cond: () => !G.clues.includes('clue_luke'),
+              act: () => {
                 checkFX('psy', 4)
                 addClue('clue_luke')
                 gainXP(10, '撬开沉默')
-              }, next: 'c',
+              },
+              next: 'c',
             },
             {
               t: '（出示铁锤）这把锤子，你认得吗？',
@@ -269,7 +300,13 @@ export const DLG = {
         },
         c: {
           ...line('pete_c_return'),
-          ch: [{ t: '（记下证词）', act: () => { addClue('clue_pete'); openGate(); }, next: null }],
+          ch: [
+            {
+              t: '（记下证词）', act: () => {
+                addClue('clue_pete')
+                openGate()
+              }, next: null,
+            }],
         },
         d: {
           ...line('pete_d'),
@@ -292,10 +329,14 @@ export const DLG = {
               }, next: 'b',
             },
             {
-              t: '【街头智慧 4】（敲了敲他的账本）让我看看账。', req: { strw: 4 }, cond: () => !G.clues.includes('clue_debt'), act: () => {
+              t: '【街头智慧 4】（敲了敲他的账本）让我看看账。',
+              req: { strw: 4 },
+              cond: () => !G.clues.includes('clue_debt'),
+              act: () => {
                 checkFX('strw', 4)
                 addClue('clue_debt')
-              }, next: 'c',
+              },
+              next: 'c',
             },
             { t: '让我看看账本。', cond: () => !G.clues.includes('clue_debt') && G.attrs.strw < 4, next: 'cref' },
             {
@@ -331,7 +372,12 @@ export const DLG = {
       start: 'a', nodes: {
         a: {
           ...line('greta_a'), ch: [
-            { t: '玛莎怎么了？', cond: () => !G.clues.includes('clue_gossip'), act: () => addClue('clue_gossip'), next: 'b' },
+            {
+              t: '玛莎怎么了？',
+              cond: () => !G.clues.includes('clue_gossip'),
+              act: () => addClue('clue_gossip'),
+              next: 'b',
+            },
             { t: '案发那晚你听见什么？', cond: () => !f.gretaNight, act: () => {f.gretaNight = 1}, next: 'c' },
             { t: '巴罗是个什么样的人？', cond: () => !f.gretaBarrow, act: () => {f.gretaBarrow = 1}, next: 'd' },
             { t: '（离开）', next: null }],

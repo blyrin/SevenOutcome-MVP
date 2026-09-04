@@ -1,12 +1,41 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { DIALOGUE_LINES } from '../src/dialogueLines.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const rootDir = path.resolve(__dirname, '..')
-const outDir = path.join(rootDir, 'public', 'voice')
+
+const args = process.argv.slice(2).filter(a => !a.startsWith('--'))
+let targetId = null
+let caseId = 'blacksmith'
+
+if (args.length === 1) {
+  const caseFilePath = path.join(rootDir, 'src', 'cases', args[0], 'dialogueLines.js')
+  if (fs.existsSync(caseFilePath)) {
+    caseId = args[0]
+  } else {
+    targetId = args[0]
+  }
+} else if (args.length >= 2) {
+  const caseFilePath = path.join(rootDir, 'src', 'cases', args[0], 'dialogueLines.js')
+  if (fs.existsSync(caseFilePath)) {
+    caseId = args[0]
+    targetId = args[1]
+  } else {
+    targetId = args[0]
+    caseId = args[1]
+  }
+}
+
+const caseModulePath = path.join(rootDir, 'src', 'cases', caseId, 'dialogueLines.js')
+if (!fs.existsSync(caseModulePath)) {
+  console.error(`Error: Case dialogueLines not found at ${caseModulePath}!`)
+  process.exit(1)
+}
+
+const { DIALOGUE_LINES } = await import(`file://${caseModulePath.replace(/\\/g, '/')}`)
+const outDir = path.join(rootDir, 'public', 'cases', caseId, 'audio', 'voice')
 
 const apiKey = process.env.MIMO_API_KEY
 if (!apiKey) {
@@ -67,9 +96,7 @@ async function sleep(ms) {
 }
 
 async function main() {
-  const args = process.argv.slice(2)
-  const targetId = args.find(a => !a.startsWith('--'))
-  const forceAll = args.includes('--force')
+  const forceAll = process.argv.includes('--force')
 
   const lines = targetId
     ? ALL_LINES.filter(item => item.id === targetId)

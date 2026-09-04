@@ -3,11 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>雾杉镇疑案 · 铁匠之死</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Serif+SC:wght@400;600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/src/style.css">
+  <title>侦探叙事推理</title>
+  <link rel="stylesheet" href="src/style.css">
 </head>
 <body>
 <div id="app">
@@ -19,8 +16,8 @@
   <div class="lbox" id="lb-b"></div>
 
   <div id="hud-tl">
-    <div id="chapterTag">第一章 · 铁匠之死</div>
-    <div id="areaName">雾杉镇 · 集市广场</div>
+    <div id="chapterTag">案件载入中…</div>
+    <div id="areaName">调查现场</div>
     <div id="objBox">
       <div class="ot">当前调查进展</div>
       <div id="objList"></div>
@@ -35,10 +32,16 @@
   </div>
   <div id="hud-bl">
     <div id="portrait">
-      <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
-        <path d="M12 2l7 3.5v5.5c0 5-3.5 9-7 11-3.5-2-7-6-7-11V5.5L12 2z"/>
-        <path d="M12 7v5"/>
-        <path d="M10 15h4"/>
+      <svg class="badge-icon"
+           viewBox="0 0 24 24"
+           fill="none"
+           stroke="currentColor"
+           stroke-width="1.5"
+           stroke-linecap="square"
+           stroke-linejoin="miter">
+        <path d="M12 2l7 3.5v5.5c0 5-3.5 9-7 11-3.5-2-7-6-7-11V5.5L12 2z" />
+        <path d="M12 7v5" />
+        <path d="M10 15h4" />
       </svg>
     </div>
     <div id="pcinfo">
@@ -94,7 +97,7 @@
     <div class="panel">
       <div class="pclose" data-close="boardModal">✕</div>
       <div class="ptitle">案情分析板</div>
-      <div id="boardSub">CASE FILE #01 · 铁匠汉斯·贝克命案</div>
+      <div id="boardSub">CASE FILE</div>
       <div id="boardBody">
         <div id="cluePool"></div>
         <div id="boardRight">
@@ -175,11 +178,22 @@
     <div class="panel">
       <div class="ptitle" style="font-size:26px">调查暂停</div>
       <button class="btn" id="btnResume">继续调查</button>
+      <button class="btn" id="btnPauseCases">切换案件</button>
       <button class="btn" id="btnSave">保存进度</button>
       <button class="btn" id="btnLoad">读取存档</button>
       <button class="btn" id="btnMusic">背景音乐：开</button>
       <button class="btn" id="btnVoice">角色配音：开</button>
       <button class="btn warn" id="btnRestart">重新开始</button>
+    </div>
+  </div>
+
+  <!-- 案件选择 -->
+  <div class="modal" id="caseModal">
+    <div class="panel" style="max-width:680px">
+      <div class="pclose" data-close="caseModal">✕</div>
+      <div class="ptitle" style="font-size:22px">案件卷宗档案库</div>
+      <div class="lu-sub">选择需要调查的案件委托</div>
+      <div id="caseList"></div>
     </div>
   </div>
 
@@ -201,27 +215,29 @@
   </div>
 
   <div id="intro">
-    <div class="it-brand">
-      <div class="it-badge">雾杉镇探案辑录</div>
-      <div class="it2">铁匠之死</div>
-      <div class="it3">THE BLACKSMITH'S DEMISE</div>
-    </div>
-    <div class="it4">
-      铁匠汉斯倒在熄灭的锻炉旁，头部受钝器重创。<br>
-      各怀心事的遗孀、学徒与债主——谎言与迷雾笼罩着小镇。<br>
-      勘查现场、走访证人、拼合证据链，做出最终裁决。
-    </div>
-    <button class="btn it-btn" id="btnStart">开 始 调 查</button>
-    <div class="it5">
-      <span>左键移动 / 调查</span>
-      <span>Tab 环境感知</span>
-      <span>B 告示板推演</span>
-      <span>I 随身证物</span>
-      <span>Esc 菜单</span>
+    <div id="introContainer">
+      <div id="introLeft">
+        <h1 class="it-main-title" id="introTitle">铁匠之死</h1>
+        <div class="it-synopsis-text" id="introSynopsis">
+          铁匠汉斯倒在熄灭的锻炉旁，头部受钝器重创。<br>
+          各怀心事的遗孀、学徒与债主——谎言与迷雾笼罩着小镇。<br>
+          勘查现场、走访证人、拼合证据链，做出最终裁决。
+        </div>
+        <div class="it-action-row">
+          <button class="btn it-start-btn primary" id="btnStart">开 始 调 查</button>
+        </div>
+      </div>
+
+      <div id="introRight">
+        <div class="it-right-header">
+          <span class="it-right-title">案件卷宗库</span>
+        </div>
+        <div id="introCaseList"></div>
+      </div>
     </div>
   </div>
 </div>
 
-<script type="module" src="/src/main.js"></script>
+<script type="module" src="src/main.js"></script>
 </body>
 </html>

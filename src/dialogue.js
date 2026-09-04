@@ -1,11 +1,10 @@
 import { isVoicePlaying, playVoice, sfx, stopVoice } from './audio.js'
 import { setTimeScaleT } from './controls.js'
-import { DLG } from './dialogueData.js'
 import { G, toast } from './state.js'
 import { refreshObjectives } from './ui.js'
 import { $, ATTR_LABELS } from './utils.js'
-import { findVoiceUrl } from './dialogueLines.js'
 import { NPCS } from './world.js'
+import { getCurrentCase } from './cases/caseManager.js'
 
 export let dlgState = null
 let typeTimer = null
@@ -13,15 +12,22 @@ let typeFull = ''
 let typeIdx = 0
 export let lastDlgNpc = ''
 
-export const NPC_PROFILES = {
-  sheriff: { title: '治安警官', role: '现场封锁与初查负责', color: '#6898d0' },
-  coroner: { title: '法医官', role: '死因鉴定与伤痕检验', color: '#7fa6b3' },
-  martha: { title: '死者遗孀', role: '第一发现人与重大嫌疑人', color: '#b97ca8' },
-  luke: { title: '铁匠学徒', role: '案发当晚目击证人', color: '#c89d68' },
-  pete: { title: '酒馆酒客', role: '当晚行踪目击证人', color: '#7ea86d' },
-  barrow: { title: '高利贷主', role: '主要债权人与恐吓嫌犯', color: '#d06868' },
-  greta: { title: '附近邻舍', role: '长期家庭矛盾目击者', color: '#c8a87c' },
-}
+export const NPC_PROFILES = new Proxy({}, {
+  get(target, prop) {
+    const cur = getCurrentCase()
+    if (cur && cur.dialogue && cur.dialogue.profiles) {
+      return cur.dialogue.profiles[prop]
+    }
+    return target[prop]
+  },
+  has(target, prop) {
+    const cur = getCurrentCase()
+    if (cur && cur.dialogue && cur.dialogue.profiles) {
+      return prop in cur.dialogue.profiles
+    }
+    return prop in target
+  },
+})
 
 export function hist(sp, tx) {
   G.history.push({ s: sp, t: tx })
@@ -35,7 +41,13 @@ export function startDialogue(id) {
   dlgState = { npc: id, isTyping: false, choices: [] }
   document.body.classList.add('dlg')
   setTimeScaleT(0.15)
-  const D = DLG[id]()
+  const curCase = getCurrentCase()
+  const trees = curCase && curCase.dialogue ? curCase.dialogue.trees : null
+  const D = trees && trees[id] ? trees[id]() : null
+  if (!D) {
+    endDialogue()
+    return
+  }
   goNode(D, D.start)
 }
 
@@ -62,7 +74,7 @@ export function goNode(D, nid) {
   if (roleEl) {
     const prof = NPC_PROFILES[dlgState.npc]
     if (prof) {
-      roleEl.textContent = `[ ${prof.title} ]`
+      roleEl.textContent = `[ ${ prof.title } ]`
       roleEl.style.display = 'inline'
     } else {
       roleEl.style.display = 'none'
@@ -80,7 +92,9 @@ export function goNode(D, nid) {
   typeIdx = 0
   $('dlgText').textContent = ''
 
-  const voiceUrl = node.voiceUrl || findVoiceUrl(node.tx)
+  const curCase = getCurrentCase()
+  const findVoiceUrl = curCase?.dialogue?.findVoiceUrl
+  const voiceUrl = node.voiceUrl || (findVoiceUrl ? findVoiceUrl(node.tx) : null)
   if (voiceUrl) {
     playVoice(voiceUrl)
   } else {
@@ -149,7 +163,7 @@ function selectChoice(c) {
     const [k, v] = Object.entries(c.req)[0]
     if (G.attrs[k] < v) {
       sfx('fail')
-      toast(`【${ATTR_LABELS[k]}】检定未达标（需 ${v}）`)
+      toast(`【${ ATTR_LABELS[k] }】检定未达标（需 ${ v }）`)
       return
     }
   }
@@ -178,16 +192,16 @@ export function renderChoices(node) {
     if (c.req) {
       const [k, v] = Object.entries(c.req)[0]
       const ok = G.attrs[k] >= v
-      reqHtml = `<span class="req ${ok ? 'ok' : ''}">[ ${ATTR_LABELS[k]} ${G.attrs[k]}/${v} ]</span>`
+      reqHtml = `<span class="req ${ ok ? 'ok' : '' }">[ ${ ATTR_LABELS[k] } ${ G.attrs[k] }/${ v } ]</span>`
       if (!ok) {
         d.classList.add('locked')
       }
     }
     const cleanText = c.t.replace(/^【.*?】\s*/, '').replace(/^\(.*?\)\s*/, '')
     d.innerHTML = `
-      <span class="num">${i + 1}.</span>
-      <span class="chc-txt">${cleanText}</span>
-      ${reqHtml}`
+      <span class="num">${ i + 1 }.</span>
+      <span class="chc-txt">${ cleanText }</span>
+      ${ reqHtml }`
     d.onclick = (e) => {
       e.stopPropagation()
       if (d.classList.contains('locked')) {

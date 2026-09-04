@@ -1,12 +1,14 @@
 import * as THREE from 'three'
 import { setMusic, sfx } from './audio.js'
 import { openBoard } from './board.js'
-import { addDiaryItem } from './clues.js'
-import { advanceDialogue, endDialogue, handleDialogueKey, skipType, startDialogue } from './dialogue.js'
-import { addClue, addItem, checkFX, closeModal, dlgOpen, failFX, G, gainXP, hasFlag, modalOpen, setFlag, toast, uiStack } from './state.js'
+import { advanceDialogue, endDialogue, handleDialogueKey, startDialogue } from './dialogue.js'
+import {
+  addClue, addItem, checkFX, closeModal, dlgOpen, failFX, G, gainXP, hasFlag, modalOpen, setFlag, toast, uiStack,
+} from './state.js'
 import { openHist, openInv, refreshObjectives, togglePause } from './ui.js'
 import { $, clamp, dist2, lerp } from './utils.js'
-import { camera, findPath, interactMeshes, isBlocked, ITAB, NPCS, openGate, player, renderer, toG, zoneAt } from './world.js'
+import { camera, findPath, interactMeshes, isBlocked, ITAB, NPCS, player, renderer, toG, zoneAt } from './world.js'
+import { getCurrentCase } from './cases/caseManager.js'
 
 export let path = []
 export let walkT = 0
@@ -16,7 +18,6 @@ export let camZoom = 1
 export let timeScale = 1
 export let timeScaleT = 1
 export const camOff = new THREE.Vector3(0, 23, 14)
-camera.position.set(0, 28, 26)
 
 export function setTimeScaleT(v) {
   timeScaleT = v
@@ -239,7 +240,8 @@ export function updatePlayer(dt) {
     player.rotation.y += diff * (1 - Math.exp(-20 * dt))
 
     walkT += dt * Math.min(actualSpeed * 1.8, 12)
-    player.children[0].position.y = 0.9 + Math.abs(Math.sin(walkT)) * 0.07
+    const baseTorsoY = player.userData.baseTorsoY || 0.82
+    player.children[0].position.y = baseTorsoY + Math.abs(Math.sin(walkT)) * 0.05
     if (player.userData.leftArm && player.userData.rightArm) {
       const sw = Math.sin(walkT) * 0.42
       player.userData.leftArm.rotation.x = sw
@@ -252,7 +254,8 @@ export function updatePlayer(dt) {
     }
   } else {
     walkT = 0
-    const idleY = 0.9 + Math.sin(performance.now() / 900) * 0.02
+    const baseTorsoY = player.userData.baseTorsoY || 0.82
+    const idleY = baseTorsoY + Math.sin(performance.now() / 900) * 0.02
     player.children[0].position.y = lerp(player.children[0].position.y, idleY, 1 - Math.exp(-10 * dt))
     if (player.userData.leftArm && player.userData.rightArm) {
       player.userData.leftArm.rotation.x *= 0.82
@@ -265,18 +268,20 @@ export function updatePlayer(dt) {
   }
 
   const zn = zoneAt(player.position.x, player.position.z)
-  const curArea = zn ? zn.n : '雾杉镇 · 郊野'
+  const prefix = (getCurrentCase()?.subtitle || '雾杉镇') + ' · '
+  const curArea = zn ? zn.n : '郊野'
+  const fullArea = prefix + curArea
   const areaName = $('areaName')
-  if (areaName.textContent !== curArea) {
-    areaName.textContent = '雾杉镇 · ' + curArea
+  if (areaName.textContent !== fullArea) {
+    areaName.textContent = fullArea
     if (zn && !G.zones[zn.id]) {
       G.zones[zn.id] = 1
       gainXP(10, '发现新区域 · ' + zn.n)
     }
   }
 
-  const target = new THREE.Vector3().copy(player.position).
-    add(new THREE.Vector3(camOff.x * camZoom, camOff.y * camZoom, camOff.z * camZoom))
+  const target = new THREE.Vector3().copy(player.position)
+    .add(new THREE.Vector3(camOff.x * camZoom, camOff.y * camZoom, camOff.z * camZoom))
   if (camera.position.distanceTo(target) > 28) {
     camera.position.copy(target)
     camLookTarget.set(player.position.x, 1, player.position.z)
@@ -341,115 +346,31 @@ export function useInteract(id) {
     startDialogue(id)
     return
   }
-  switch (id) {
-    case 'hammer':
-      if (!G.clues.includes('clue_hammer')) {
-        addClue('clue_hammer')
-        setFlag('hasHammer')
-      } else {
-        toast('铁锤已作为证物记录。')
-      }
-      break
-    case 'letter':
-      if (!G.clues.includes('clue_letter')) {
-        addClue('clue_letter')
-      } else {
-        toast('恐吓信已记录在案。')
-      }
-      break
-    case 'body':
-      setFlag('seenBody')
-      refreshObjectives()
-      flavor('body', '白色粉笔人形轮廓静静躺在血泊中。大片暗红血迹已经发黑干涸——找验尸官贝尔谈谈吧。')
-      break
-    case 'anvil':
-      flavor('anvil', '沉重的铁砧表面布满凹凸的锤痕。最新的一道锋利划痕泛着冷光——像一道新鲜的创口。')
-      break
-    case 'forge':
-      flavor('forge', '锻炉早已经彻底冷透了。冰冷的灰烬里斜插着半截烧焦的拨火铁棍。')
-      break
-    case 'fountain':
-      flavor('fountain', '喷泉的水面映着月光。水底沉着几枚铜币——雾杉镇的人相信，水会记住愿望。')
-      break
-    case 'barrels':
-      if (G.clues.includes('clue_apron')) {
-        toast('木桶后已经没有别的了。')
-        break
-      }
-      if (G.attrs.ins >= 3) {
-        checkFX('ins', 3)
-        addClue('clue_apron')
-      } else {
-        failFX('ins', 3, '木桶后的阴影里似乎有什么……但你看不真切。')
-      }
-      break
-    case 'moneybox':
-      if (G.clues.includes('clue_insurance')) {
-        toast('钱匣已经空了。')
-        break
-      }
-      if (!hasFlag('peteTip')) {
-        toast('床下塞着个上锁的钱匣。也许有人知道它的秘密。')
-        break
-      }
-      if (G.attrs.int >= 4) {
-        checkFX('int', 4)
-        addClue('clue_insurance')
-      } else if (G.attrs.strw >= 3) {
-        checkFX('strw', 3)
-        addClue('clue_insurance')
-      } else {
-        failFX('int', 4, '锁很结实。撬不开，也套不出话。')
-      }
-      break
-    case 'dresser':
-      if (G.clues.includes('clue_diary')) {
-        toast('抽屉空了。')
-        break
-      }
-      if (hasFlag('diaryHint')) {
-        addClue('clue_diary')
-        addDiaryItem()
-        toast('玛莎允许你取走了日记。')
-      } else if (G.attrs.ins >= 4) {
-        checkFX('ins', 4)
-        addClue('clue_diary')
-        addDiaryItem()
-        toast('抽屉缝里露出一角纸页——一本日记。（未经女主人的许可）')
-      } else {
-        failFX('ins', 4, '抽屉上了锁。也许该先问问这屋子的主人。')
-      }
-      break
-    case 'wallet':
-      if (G.inventory.includes('wallet')) {
-        toast('钱包已经在你这儿了。')
-        break
-      }
-      addItem('wallet')
-      sfx('pickup')
-      toast('拾取：破旧的钱包 —— 也许是皮特丢的。')
-      if (ITAB.wallet) {
-        ITAB.wallet.hidden = true
-        ITAB.wallet.mesh.visible = false
-      }
-      break
-    case 'gate':
-      if (hasFlag('gateOpen')) {
-        toast('皮特的钥匙打开了它。暗巷如今畅通无阻。')
-      } else if (hasFlag('peteTip') || G.flags.walletReturned) {
-        openGate()
-        toast('你用老皮特的钥匙打开了栅栏门。暗巷如今畅通无阻。')
-      } else {
-        toast('栅栏门锈住了，挂着一把沉重的锁。要是有人知道钥匙的下落就好了……')
-      }
-      break
-    case 'board':
-      openBoard()
-      break
+  if (id === 'board') {
+    openBoard()
+    return
+  }
+  const curCase = getCurrentCase()
+  if (curCase && curCase.map && curCase.map.onInteract) {
+    curCase.map.onInteract(id, {
+      G,
+      player,
+      addClue,
+      addItem,
+      setFlag,
+      hasFlag,
+      checkFX,
+      failFX,
+      flavor,
+      toast,
+      sfx,
+      refreshObjectives,
+    })
   }
 }
 
 export function initControlsEvents() {
+  camera.position.set(0, 28, 26)
   renderer.domElement.addEventListener('pointermove', e => {
     if (modalOpen()) {
       return

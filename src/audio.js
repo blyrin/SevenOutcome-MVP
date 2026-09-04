@@ -1,12 +1,17 @@
 import { G } from './state.js'
-
-const BGM_URL = `${import.meta.env.BASE_URL}Rain on Elm Street.mp3`
+import { getCurrentCase } from './cases/caseManager.js'
 
 export const AU = { ctx: null, bgm: null, amb: null, voice: null }
 
 let bgm = null
+let currentBgmUrl = ''
 let fadeTimer = null
 let voiceAudio = null
+
+function getCaseBgmUrl() {
+  const curCase = getCurrentCase()
+  return curCase?.audio?.bgm || `${ import.meta.env.BASE_URL }cases/blacksmith/audio/bgm.mp3`
+}
 
 function fadeBgm(target, duration = 1200) {
   if (!bgm) {
@@ -45,19 +50,38 @@ export function auInit() {
   startAmbient()
 }
 
-export function startAmbient() {
-  if (!bgm) {
-    bgm = new Audio(encodeURI(BGM_URL))
+export function playBgm(url) {
+  const targetUrl = url || getCaseBgmUrl()
+  if (bgm && currentBgmUrl === targetUrl) {
+    if (G.musicOn && bgm.paused) {
+      bgm.play().then(() => fadeBgm(0.42, 1000)).catch(() => {})
+    }
+    return
+  }
+  currentBgmUrl = targetUrl
+  if (bgm) {
+    fadeBgm(0, 500)
+    setTimeout(() => {
+      bgm.pause()
+      bgm.src = encodeURI(targetUrl)
+      if (G.musicOn) {
+        bgm.play().then(() => fadeBgm(0.42, 1500)).catch(() => {})
+      }
+    }, 520)
+  } else {
+    bgm = new Audio(encodeURI(targetUrl))
     bgm.loop = true
     bgm.volume = 0
     AU.bgm = bgm
     AU.amb = bgm
+    if (G.musicOn) {
+      bgm.play().then(() => fadeBgm(0.42, 2000)).catch(() => {})
+    }
   }
-  if (G.musicOn) {
-    bgm.play().then(() => {
-      fadeBgm(0.42, 2000)
-    }).catch(() => {})
-  }
+}
+
+export function startAmbient() {
+  playBgm(getCaseBgmUrl())
 }
 
 export function setMusic(on) {

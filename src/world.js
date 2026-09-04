@@ -5,8 +5,9 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js'
 import { VignetteShader } from 'three/examples/jsm/shaders/VignetteShader.js'
-import { G, hasFlag, setFlag } from './state.js'
-import { $, clamp, dist2, rand } from './utils.js'
+import { $, clamp, rand } from './utils.js'
+import { G, setFlag } from './state.js'
+import { getCurrentCase } from './cases/caseManager.js'
 
 export const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
 renderer.setSize(innerWidth, innerHeight)
@@ -23,6 +24,7 @@ scene.background = new THREE.Color(0x090e16)
 scene.fog = new THREE.Fog(0x090e16, 30, 96)
 
 export const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, .1, 200)
+camera.position.set(0, 28, 26)
 
 export const composer = new EffectComposer(renderer)
 const renderPass = new RenderPass(scene, camera)
@@ -87,170 +89,15 @@ export function canvasTex(w, h, fn) {
   return t
 }
 
-const groundTex = canvasTex(512, 512, (x, w, h) => {
-  x.fillStyle = '#14171d'
-  x.fillRect(0, 0, w, h)
-  const cols = 12, rows = 12
-  const cw = w / cols, rh = h / rows
-  for (let r = 0; r < rows; r++) {
-    const shift = (r % 2) * (cw * 0.45)
-    for (let c = -1; c <= cols + 1; c++) {
-      const bx = c * cw + shift + rand(-2, 2)
-      const by = r * rh + rand(-2, 2)
-      const bw = cw - 4 + rand(-2, 2)
-      const bh = rh - 4 + rand(-2, 2)
-      const tone = 36 + Math.floor(rand(-8, 10))
-      const toneB = tone + Math.floor(rand(2, 8))
-      x.fillStyle = `rgb(${tone - 4}, ${tone}, ${toneB})`
-      x.beginPath()
-      x.roundRect ? x.roundRect(bx, by, bw, bh, 3) : x.rect(bx, by, bw, bh)
-      x.fill()
-      x.fillStyle = 'rgba(255, 255, 255, 0.07)'
-      x.fillRect(bx + 1, by + 1, bw - 2, 2)
-      x.fillRect(bx + 1, by + 1, 2, bh - 2)
-      x.fillStyle = 'rgba(0, 0, 0, 0.28)'
-      x.fillRect(bx + 1, by + bh - 2, bw - 2, 2)
-      x.fillRect(bx + bw - 2, by + 1, 2, bh - 2)
-    }
-  }
-  for (let i = 0; i < 900; i++) {
-    const s = rand(1, 3)
-    x.fillStyle = Math.random() < 0.2 ? 'rgba(22, 38, 25, 0.35)' : 'rgba(0, 0, 0, 0.18)'
-    x.fillRect(rand(0, w), rand(0, h), s, s)
-  }
-  for (let i = 0; i < 7; i++) {
-    const px = rand(20, w - 20), py = rand(20, h - 20)
-    const gr = x.createRadialGradient(px, py, 2, px, py, rand(12, 26))
-    gr.addColorStop(0, 'rgba(10, 14, 18, 0.45)')
-    gr.addColorStop(1, 'rgba(10, 14, 18, 0)')
-    x.fillStyle = gr
-    x.beginPath()
-    x.arc(px, py, 26, 0, Math.PI * 2)
-    x.fill()
-  }
-})
-groundTex.repeat.set(16, 11)
-
-const groundRoughTex = canvasTex(256, 256, (x, w, h) => {
-  x.fillStyle = '#d0d0d0'
-  x.fillRect(0, 0, w, h)
-  for (let i = 0; i < 60; i++) {
-    const px = rand(0, w), py = rand(0, h), r = rand(6, 18)
-    const gr = x.createRadialGradient(px, py, 1, px, py, r)
-    gr.addColorStop(0, '#555555')
-    gr.addColorStop(1, '#d0d0d0')
-    x.fillStyle = gr
-    x.fillRect(px - r, py - r, r * 2, r * 2)
-  }
-})
-groundRoughTex.repeat.set(16, 11)
-
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(90, 64), new THREE.MeshStandardMaterial({
-  map: groundTex,
-  roughnessMap: groundRoughTex,
-  roughness: 0.82,
-  metalness: 0.08,
-}))
-ground.rotation.x = -Math.PI / 2
-ground.receiveShadow = true
-scene.add(ground)
-
-const roadTex = canvasTex(256, 256, (x, w, h) => {
-  x.fillStyle = '#161920'
-  x.fillRect(0, 0, w, h)
-  const rows = 8, cols = 4
-  const rh = h / rows, cw = w / cols
-  for (let r = 0; r < rows; r++) {
-    const offset = (r % 2) * (cw * 0.5)
-    for (let c = -1; c <= cols + 1; c++) {
-      const bx = c * cw + offset + 2
-      const by = r * rh + 2
-      const bw = cw - 4
-      const bh = rh - 4
-      const t = 26 + Math.floor(rand(-5, 7))
-      x.fillStyle = `rgb(${t - 2}, ${t}, ${t + 4})`
-      x.fillRect(bx, by, bw, bh)
-      x.fillStyle = 'rgba(255, 255, 255, 0.06)'
-      x.fillRect(bx, by, bw, 2)
-      x.fillStyle = 'rgba(0, 0, 0, 0.32)'
-      x.fillRect(bx, by + bh - 2, bw, 2)
-    }
-  }
-  for (let i = 0; i < 400; i++) {
-    x.fillStyle = 'rgba(0, 0, 0, 0.22)'
-    x.fillRect(rand(0, w), rand(0, h), 2, 2)
-  }
-})
-
-function road(x, z, w, d) {
-  const tex = roadTex.clone()
-  tex.repeat.set(w / 3.2, d / 3.2)
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({
-    map: tex,
-    roughness: 0.72,
-    metalness: 0.12,
-  }))
-  m.rotation.x = -Math.PI / 2
-  m.position.set(x, .02, z)
-  m.receiveShadow = true
-  scene.add(m)
-}
-
-road(0, 0, 84, 6.4)
-road(0, 0, 6.4, 58)
-
-const plazaTex = canvasTex(256, 256, (x, w, h) => {
-  x.fillStyle = '#222833'
-  x.fillRect(0, 0, w, h)
-  const cx = w / 2, cy = h / 2
-  for (let r = 110; r > 10; r -= 20) {
-    x.strokeStyle = 'rgba(18, 22, 30, 0.9)'
-    x.lineWidth = 3
-    x.beginPath()
-    x.arc(cx, cy, r, 0, Math.PI * 2)
-    x.stroke()
-  }
-  x.strokeStyle = 'rgba(68, 80, 102, 0.35)'
-  x.lineWidth = 2
-  for (let a = 0; a < 8; a++) {
-    const ang = (a * Math.PI) / 4
-    x.beginPath()
-    x.moveTo(cx, cy)
-    x.lineTo(cx + Math.cos(ang) * 115, cy + Math.sin(ang) * 115)
-    x.stroke()
-  }
-  for (let a = 0; a < 8; a++) {
-    const ang = (a * Math.PI) / 4
-    x.fillStyle = a % 2 ? 'rgba(74, 88, 112, 0.3)' : 'rgba(32, 40, 52, 0.35)'
-    x.beginPath()
-    x.moveTo(cx, cy)
-    x.lineTo(cx + Math.cos(ang) * 90, cy + Math.sin(ang) * 90)
-    x.lineTo(cx + Math.cos(ang + Math.PI / 8) * 45, cy + Math.sin(ang + Math.PI / 8) * 45)
-    x.closePath()
-    x.fill()
-  }
-})
-
-const plaza = new THREE.Mesh(new THREE.CircleGeometry(8.5, 48), new THREE.MeshStandardMaterial({
-  map: plazaTex,
-  color: 0x8a97aa,
-  roughness: 0.74,
-  metalness: 0.12,
-}))
-plaza.rotation.x = -Math.PI / 2
-plaza.position.y = .03
-plaza.receiveShadow = true
-scene.add(plaza);
-
-/* 星空与月亮 */
-(() => {
+;(() => {
   const g = new THREE.BufferGeometry(), p = []
   for (let i = 0; i < 420; i++) {
     const r = rand(60, 95), t = rand(0, Math.PI * 2), e = rand(.12, 1.35)
     p.push(Math.cos(t) * r * Math.cos(e), Math.sin(e) * r, Math.sin(t) * r * Math.cos(e))
   }
   g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3))
-  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xc4d6ee, size: .38, transparent: true, opacity: .88 })))
+  scene.add(
+    new THREE.Points(g, new THREE.PointsMaterial({ color: 0xc4d6ee, size: .38, transparent: true, opacity: .88 })))
   const mt = canvasTex(128, 128, (x) => {
     const gr = x.createRadialGradient(64, 64, 6, 64, 64, 64)
     gr.addColorStop(0, '#fffbe6')
@@ -267,115 +114,142 @@ scene.add(plaza);
   scene.add(ms)
 })()
 
-/* ── 碰撞与网格 ── */
 export const GW = 81, GH = 57
 export const blocked = new Uint8Array(GW * GH)
 export const toG = (x, z) => [clamp(Math.round(x) + 40, 0, GW - 1), clamp(Math.round(z) + 28, 0, GH - 1)]
 export const fromG = (gx, gy) => [gx - 40, gy - 28]
+
+export function resetGrid() {
+  blocked.fill(0)
+}
 
 export function blockRect(x1, z1, x2, z2, pad) {
   pad = pad === undefined ? 0 : pad
   const eps = 0.05
   const minGx = Math.max(0, Math.ceil(x1 - pad - 0.5 + eps) + 40)
   const maxGx = Math.min(GW - 1, Math.floor(x2 + pad + 0.5 - eps) + 40)
-  const minGy = Math.max(0, Math.ceil(z1 - pad - 0.5 + eps) + 28)
-  const maxGy = Math.min(GH - 1, Math.floor(z2 + pad + 0.5 - eps) + 28)
-  for (let gx = minGx; gx <= maxGx; gx++) {
-    for (let gy = minGy; gy <= maxGy; gy++) {
-      blocked[gy * GW + gx] = 1
+  const minGz = Math.max(0, Math.ceil(z1 - pad - 0.5 + eps) + 28)
+  const maxGz = Math.min(GH - 1, Math.floor(z2 + pad + 0.5 - eps) + 28)
+  for (let gz = minGz; gz <= maxGz; gz++) {
+    for (let gx = minGx; gx <= maxGx; gx++) {
+      blocked[gz * GW + gx] = 1
     }
   }
 }
 
-blockRect(-41, -29, 41, -28.4, 0)
-blockRect(-41, 28.4, 41, 29, 0)
-blockRect(-41, -29, -40.4, 29, 0)
-blockRect(40.4, -29, 41, 29, 0)
-
 export function isBlocked(gx, gy) {
-  if (gx < 0 || gy < 0 || gx >= GW || gy >= GH) {
+  if (gx < 0 || gx >= GW || gy < 0 || gy >= GH) {
     return true
   }
-  if (blocked[gy * GW + gx]) {
-    return true
-  }
-  if (!hasFlag('gateOpen') && gx >= 66 && gx <= 70 && gy === 28) {
-    return true
-  }
-  return false
+  return blocked[gy * GW + gx] === 1
 }
 
 export function nearestFree(gx, gy) {
   if (!isBlocked(gx, gy)) {
     return [gx, gy]
   }
-  for (let r = 1; r <= 3; r++) {
-    for (let dx = -r; dx <= r; dx++) {
-      for (let dy = -r; dy <= r; dy++) {
-        if (!isBlocked(gx + dx, gy + dy)) {
-          return [gx + dx, gy + dy]
+  for (let r = 1; r < 20; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.abs(dx) === r || Math.abs(dy) === r) {
+          const nx = gx + dx, ny = gy + dy
+          if (!isBlocked(nx, ny)) {
+            return [nx, ny]
+          }
         }
       }
     }
   }
-  return null
+  return [gx, gy]
 }
 
 export function findPath(sx, sz, tx, tz) {
-  const s = toG(sx, sz)
-  let t = toG(tx, tz)
-  t = nearestFree(t[0], t[1])
-  if (!t) {
+  const start = toG(sx, sz)
+  let target = toG(tx, tz)
+  if (isBlocked(target[0], target[1])) {
+    target = nearestFree(target[0], target[1])
+  }
+  if (start[0] === target[0] && start[1] === target[1]) {
     return []
   }
-  const [sx0, sy0] = s, [tx0, ty0] = t
-  if (sx0 === tx0 && sy0 === ty0) {
-    return []
-  }
-  const open = [{ x: sx0, y: sy0, g: 0, f: 0 }], came = {}, gs = {}
-  gs[sy0 * GW + sx0] = 0
-  const closed = {}
-  const h = (x, y) => Math.hypot(x - tx0, y - ty0)
-  while (open.length) {
-    let bi = 0
-    for (let i = 1; i < open.length; i++) {
-      if (open[i].f < open[bi].f) {
-        bi = i
+
+  const startIdx = start[1] * GW + start[0]
+  const targetIdx = target[1] * GW + target[0]
+
+  const openSet = [startIdx]
+  const inOpen = new Uint8Array(GW * GH)
+  inOpen[startIdx] = 1
+
+  const closed = new Uint8Array(GW * GH)
+  const cameFrom = new Int32Array(GW * GH).fill(-1)
+  const gScore = new Float32Array(GW * GH).fill(1e9)
+  const fScore = new Float32Array(GW * GH).fill(1e9)
+
+  gScore[startIdx] = 0
+  const h = (gx, gy) => Math.hypot(gx - target[0], gy - target[1])
+  fScore[startIdx] = h(start[0], start[1])
+
+  const dirs = [
+    [1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1],
+    [1, 1, 1.414], [-1, 1, 1.414], [1, -1, 1.414], [-1, -1, 1.414],
+  ]
+
+  let iters = 0
+  while (openSet.length > 0 && iters < 1200) {
+    iters++
+    let bestIdx = 0
+    let bestF = fScore[openSet[0]]
+    for (let i = 1; i < openSet.length; i++) {
+      if (fScore[openSet[i]] < bestF) {
+        bestF = fScore[openSet[i]]
+        bestIdx = i
       }
     }
-    const cur = open.splice(bi, 1)[0]
-    const ck = cur.y * GW + cur.x
-    if (closed[ck]) {
-      continue
-    }
-    closed[ck] = 1
-    if (cur.x === tx0 && cur.y === ty0) {
+    const current = openSet.splice(bestIdx, 1)[0]
+    inOpen[current] = 0
+    closed[current] = 1
+
+    if (current === targetIdx) {
       const path = []
-      let k = ck
-      while (k !== undefined) {
-        const y = (k / GW) | 0, x = k % GW
-        path.unshift(fromG(x, y))
-        k = came[k]
+      let curr = current
+      while (curr !== -1) {
+        const cx = curr % GW
+        const cy = Math.floor(curr / GW)
+        path.unshift(fromG(cx, cy))
+        curr = cameFrom[curr]
       }
+      path.shift()
       return path
     }
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        if (!dx && !dy) {
+
+    const cx = current % GW
+    const cy = Math.floor(current / GW)
+
+    for (const [dx, dy, cost] of dirs) {
+      const nx = cx + dx
+      const ny = cy + dy
+      if (nx < 0 || nx >= GW || ny < 0 || ny >= GH) {
+        continue
+      }
+      const nIdx = ny * GW + nx
+      if (closed[nIdx] || blocked[nIdx]) {
+        continue
+      }
+
+      if (dx !== 0 && dy !== 0) {
+        if (blocked[cy * GW + nx] && blocked[ny * GW + cx]) {
           continue
         }
-        const nx = cur.x + dx, ny = cur.y + dy
-        if (isBlocked(nx, ny)) {
-          continue
-        }
-        if (dx && dy && (isBlocked(cur.x + dx, cur.y) || isBlocked(cur.x, cur.y + dy))) {
-          continue
-        }
-        const ng = cur.g + (dx && dy ? 1.414 : 1), nk = ny * GW + nx
-        if (gs[nk] === undefined || ng < gs[nk]) {
-          gs[nk] = ng
-          came[nk] = ck
-          open.push({ x: nx, y: ny, g: ng, f: ng + h(nx, ny) })
+      }
+
+      const tentativeG = gScore[current] + cost
+      if (tentativeG < gScore[nIdx]) {
+        cameFrom[nIdx] = current
+        gScore[nIdx] = tentativeG
+        fScore[nIdx] = tentativeG + h(nx, ny)
+        if (!inOpen[nIdx]) {
+          openSet.push(nIdx)
+          inOpen[nIdx] = 1
         }
       }
     }
@@ -383,59 +257,122 @@ export function findPath(sx, sz, tx, tz) {
   return []
 }
 
-/* ── 建筑与道具建造 ── */
-export const interactMeshes = []
-export let gateMesh = null
-
-const woodTex = canvasTex(256, 256, (x, w, h) => {
-  x.fillStyle = '#4a3726'
+export const woodTex = canvasTex(256, 256, (x, w, h) => {
+  x.fillStyle = '#3a2a1d'
   x.fillRect(0, 0, w, h)
   for (let i = 0; i < 40; i++) {
-    const y = rand(0, h)
-    x.fillStyle = Math.random() < 0.5 ? 'rgba(40, 26, 16, 0.45)' : 'rgba(92, 70, 50, 0.35)'
-    x.fillRect(0, y, w, rand(1, 4))
+    const y = i * 6.4
+    x.fillStyle = i % 2 ? 'rgba(40, 26, 16, 0.4)' : 'rgba(74, 52, 34, 0.35)'
+    x.fillRect(0, y, w, 6.4)
+    x.fillStyle = 'rgba(18, 12, 8, 0.35)'
+    x.fillRect(0, y, w, 1)
   }
-  for (let i = 0; i < 5; i++) {
-    const y = i * (h / 4)
-    x.fillStyle = 'rgba(20, 14, 10, 0.65)'
-    x.fillRect(0, y, w, 2)
-  }
-})
-
-const wallPlasterTex = canvasTex(256, 256, (x, w, h) => {
-  x.fillStyle = '#4c4542'
-  x.fillRect(0, 0, w, h)
-  for (let r = 0; r < 8; r++) {
-    const y = r * 32
-    x.fillStyle = 'rgba(25, 23, 22, 0.4)'
-    x.fillRect(0, y, w, 2)
-    const shift = (r % 2) * 32
-    for (let c = -1; c < 9; c++) {
-      x.fillRect(c * 64 + shift, y, 2, 32)
-    }
-  }
-  for (let i = 0; i < 300; i++) {
-    x.fillStyle = 'rgba(255, 255, 255, 0.04)'
-    x.fillRect(rand(0, w), rand(0, h), 2, 2)
+  for (let i = 0; i < 200; i++) {
+    x.fillStyle = 'rgba(0, 0, 0, 0.15)'
+    x.fillRect(rand(0, w), rand(0, h), rand(4, 18), 1)
   }
 })
 
-const roofTileTex = canvasTex(256, 256, (x, w, h) => {
-  x.fillStyle = '#26242c'
+export const fabricTex = canvasTex(256, 256, (x, w, h) => {
+  x.fillStyle = '#808080'
   x.fillRect(0, 0, w, h)
-  const rows = 12
-  const rh = h / rows
+  const step = 8
+  for (let i = -w; i < w * 2; i += step) {
+    x.strokeStyle = 'rgba(255, 255, 255, 0.08)'
+    x.lineWidth = 1.5
+    x.beginPath()
+    x.moveTo(i, 0)
+    x.lineTo(i + h, h)
+    x.stroke()
+    x.strokeStyle = 'rgba(0, 0, 0, 0.12)'
+    x.beginPath()
+    x.moveTo(i + step / 2, 0)
+    x.lineTo(i + step / 2 + h, h)
+    x.stroke()
+  }
+  for (let j = -w; j < w * 2; j += step) {
+    x.strokeStyle = 'rgba(255, 255, 255, 0.05)'
+    x.lineWidth = 1
+    x.beginPath()
+    x.moveTo(j + h, 0)
+    x.lineTo(j, h)
+    x.stroke()
+  }
+  for (let k = 0; k < 600; k++) {
+    x.fillStyle = Math.random() < 0.5 ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.08)'
+    x.fillRect(rand(0, w), rand(0, h), 1.5, 1.5)
+  }
+})
+
+export const leatherTex = canvasTex(256, 256, (x, w, h) => {
+  x.fillStyle = '#7a6a5d'
+  x.fillRect(0, 0, w, h)
+  for (let i = 0; i < 900; i++) {
+    const px = rand(0, w), py = rand(0, h), r = rand(1, 3.5)
+    x.fillStyle = Math.random() < 0.4 ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.12)'
+    x.beginPath()
+    x.arc(px, py, r, 0, Math.PI * 2)
+    x.fill()
+  }
+  for (let i = 0; i < 30; i++) {
+    x.strokeStyle = 'rgba(0, 0, 0, 0.1)'
+    x.lineWidth = 1
+    x.beginPath()
+    const sx = rand(0, w), sy = rand(0, h)
+    x.moveTo(sx, sy)
+    x.lineTo(sx + rand(-15, 15), sy + rand(-15, 15))
+    x.stroke()
+  }
+})
+
+export const linenTex = canvasTex(128, 128, (x, w, h) => {
+  x.fillStyle = '#dcd6ca'
+  x.fillRect(0, 0, w, h)
+  for (let i = 0; i < w; i += 4) {
+    x.fillStyle = i % 8 === 0 ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.06)'
+    x.fillRect(i, 0, 2, h)
+  }
+  for (let j = 0; j < h; j += 4) {
+    x.fillStyle = 'rgba(0, 0, 0, 0.04)'
+    x.fillRect(0, j, w, 1)
+  }
+})
+
+export const wallPlasterTex = canvasTex(256, 256, (x, w, h) => {
+  x.fillStyle = '#6a6058'
+  x.fillRect(0, 0, w, h)
+  for (let i = 0; i < 400; i++) {
+    const s = rand(1, 4)
+    x.fillStyle = Math.random() < 0.5 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.18)'
+    x.fillRect(rand(0, w), rand(0, h), s, s)
+  }
+  for (let i = 0; i < 60; i++) {
+    x.fillStyle = 'rgba(42, 34, 28, 0.25)'
+    const px = rand(0, w), py = rand(0, h), sz = rand(6, 18)
+    x.beginPath()
+    x.arc(px, py, sz, 0, Math.PI * 2)
+    x.fill()
+  }
+})
+
+export const roofTileTex = canvasTex(256, 256, (x, w, h) => {
+  x.fillStyle = '#2d2220'
+  x.fillRect(0, 0, w, h)
+  const rows = 16, cols = 8
+  const rh = h / rows, cw = w / cols
   for (let r = 0; r < rows; r++) {
-    const y = r * rh
-    x.fillStyle = 'rgba(12, 11, 15, 0.8)'
-    x.fillRect(0, y, w, 3)
-    const shift = (r % 2) * 16
-    for (let c = -1; c < 18; c++) {
-      x.fillStyle = 'rgba(18, 16, 22, 0.6)'
-      x.fillRect(c * 20 + shift, y, 2, rh)
+    const off = (r % 2) * (cw * 0.5)
+    for (let c = -1; c <= cols + 1; c++) {
+      const bx = c * cw + off
+      const by = r * rh
+      const v = 38 + Math.floor(rand(-6, 8))
+      x.fillStyle = `rgb(${ v + 6 }, ${ v }, ${ v - 2 })`
+      x.beginPath()
+      x.roundRect ? x.roundRect(bx + 1, by + 1, cw - 2, rh - 1, [0, 0, 3, 3]) : x.rect(bx + 1, by + 1, cw - 2, rh - 1)
+      x.fill()
+      x.fillStyle = 'rgba(0, 0, 0, 0.45)'
+      x.fillRect(bx + 1, by + rh - 1, cw - 2, 1)
     }
-    x.fillStyle = 'rgba(255, 255, 255, 0.06)'
-    x.fillRect(0, y + rh - 2, w, 1)
   }
 })
 
@@ -462,7 +399,7 @@ export function wallRects(list) {
   list.forEach(r => blockRect(r[0], r[1], r[2], r[3], 0))
 }
 
-function quoinCorner(x, z, h, c) {
+export function quoinCorner(x, z, h, c) {
   const count = Math.floor(h / 0.45)
   for (let i = 0; i < count; i++) {
     const s = (i % 2 === 0) ? 0.38 : 0.26
@@ -537,7 +474,7 @@ export function buildingShell(x1, z1, x2, z2, h, color, door) {
   return wr
 }
 
-const windowTex = canvasTex(128, 128, (x, w, h) => {
+export const windowTex = canvasTex(128, 128, (x, w, h) => {
   const g = x.createRadialGradient(64, 64, 8, 64, 64, 64)
   g.addColorStop(0, '#fff4b8')
   g.addColorStop(0.35, '#ffae38')
@@ -560,7 +497,7 @@ const windowTex = canvasTex(128, 128, (x, w, h) => {
   x.fillRect(w - 32, 10, 22, h - 20)
 })
 
-const windowMat = new THREE.MeshStandardMaterial({
+export const windowMat = new THREE.MeshStandardMaterial({
   map: windowTex,
   emissive: 0xff9c36,
   emissiveMap: windowTex,
@@ -619,7 +556,7 @@ export function solidHouse(x, z, w, d, h, c, rc) {
   blockRect(x - w / 2, z - d / 2, x + w / 2, z + d / 2, 0)
 }
 
-const lampGlowTex = canvasTex(128, 128, (x, w, h) => {
+export const lampGlowTex = canvasTex(128, 128, (x, w, h) => {
   const g = x.createRadialGradient(64, 64, 4, 64, 64, 64)
   g.addColorStop(0, 'rgba(255, 225, 140, 0.98)')
   g.addColorStop(0.24, 'rgba(255, 180, 80, 0.5)')
@@ -635,12 +572,14 @@ export function lamp(x, z) {
   lampPositions.push([x, z])
   const g = new THREE.Group()
 
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(.22, .32, .5, 8), mat(0x181c22, { metalness: 0.65, roughness: 0.38 }))
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(.22, .32, .5, 8),
+    mat(0x181c22, { metalness: 0.65, roughness: 0.38 }))
   base.position.y = .25
   base.castShadow = true
   g.add(base)
 
-  const p = new THREE.Mesh(new THREE.CylinderGeometry(.065, .085, 3.2, 8), mat(0x1c2026, { metalness: 0.65, roughness: 0.4 }))
+  const p = new THREE.Mesh(new THREE.CylinderGeometry(.065, .085, 3.2, 8),
+    mat(0x1c2026, { metalness: 0.65, roughness: 0.4 }))
   p.position.y = 1.85
   p.castShadow = true
   g.add(p)
@@ -654,7 +593,8 @@ export function lamp(x, z) {
   bracket.position.set(0.18, 3.42, 0)
   g.add(bracket)
 
-  const frame = new THREE.Mesh(new THREE.CylinderGeometry(.26, .18, .52, 6, 1, true), mat(0x181b20, { metalness: 0.7, roughness: 0.3 }))
+  const frame = new THREE.Mesh(new THREE.CylinderGeometry(.26, .18, .52, 6, 1, true),
+    mat(0x181b20, { metalness: 0.7, roughness: 0.3 }))
   frame.position.y = 3.52
   g.add(frame)
 
@@ -817,7 +757,8 @@ export function tree(x, z, s) {
   s = s || 1
   const tg = new THREE.Group()
 
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.13 * s, .23 * s, 1.7 * s, 7), mat(0x2c2217, { roughness: 0.92 }))
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.13 * s, .23 * s, 1.7 * s, 7),
+    mat(0x2c2217, { roughness: 0.92 }))
   trunk.position.set(0, .85 * s, 0)
   trunk.rotation.z = 0.04
   trunk.castShadow = true
@@ -897,6 +838,9 @@ export function stool(x, z) {
   scene.add(sg)
 }
 
+export const interactMeshes = []
+export const ITAB = {}
+
 export function tagInteractive(mesh, id, name, kind) {
   mesh.userData.iid = id
   interactMeshes.push(mesh)
@@ -930,37 +874,56 @@ const bloodTex = canvasTex(256, 256, (x, w, h) => {
   }
 })
 
-export function chalkOutline(x, z) {
-  const pts = []
-  const s = .34
-  const P = (a, b) => pts.push(new THREE.Vector3(x + a * s, .04, z + b * s))
-  P(0, -3)
-  P(.9, -2.6)
-  P(1, -1.2)
-  P(2.4, -1.6)
-  P(2.6, -.9)
-  P(1.2, -.2)
-  P(1.3, 1.4)
-  P(2, 3)
-  P(1.2, 3.2)
-  P(.4, 1.8)
-  P(0, 2.2)
-  P(-.4, 1.8)
-  P(-1.2, 3.2)
-  P(-2, 3)
-  P(-1.3, 1.4)
-  P(-1.2, -.2)
-  P(-2.6, -.9)
-  P(-2.4, -1.6)
-  P(-1, -1.2)
-  P(-.9, -2.6)
-  pts.push(pts[0].clone())
-  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
-    new THREE.LineBasicMaterial({ color: 0xd8d8d0, transparent: true, opacity: .75 }))
-  scene.add(line)
+const chalkTex = canvasTex(512, 512, (x, w, h) => {
+  x.clearRect(0, 0, w, h)
+  x.strokeStyle = '#f4f4f0'
+  x.lineWidth = 7
+  x.lineCap = 'round'
+  x.lineJoin = 'round'
 
+  x.beginPath()
+  x.arc(256, 75, 36, 0, Math.PI * 2)
+  x.stroke()
+
+  x.beginPath()
+  x.moveTo(236, 110)
+  x.lineTo(170, 135)
+  x.lineTo(110, 190)
+  x.lineTo(75, 265)
+  x.lineTo(95, 275)
+  x.lineTo(130, 205)
+  x.lineTo(185, 160)
+  x.lineTo(195, 275)
+  x.lineTo(160, 375)
+  x.lineTo(145, 470)
+  x.lineTo(175, 475)
+  x.lineTo(195, 385)
+  x.lineTo(256, 295)
+  x.lineTo(315, 385)
+  x.lineTo(335, 475)
+  x.lineTo(365, 470)
+  x.lineTo(350, 375)
+  x.lineTo(315, 275)
+  x.lineTo(325, 160)
+  x.lineTo(380, 205)
+  x.lineTo(415, 275)
+  x.lineTo(435, 265)
+  x.lineTo(400, 190)
+  x.lineTo(340, 135)
+  x.lineTo(276, 110)
+  x.stroke()
+
+  for (let i = 0; i < 400; i++) {
+    const rx = rand(50, 460)
+    const ry = rand(30, 485)
+    x.fillStyle = 'rgba(255, 255, 255, ' + rand(0.15, 0.6) + ')'
+    x.fillRect(rx, ry, rand(1.5, 3.5), rand(1.5, 3.5))
+  }
+})
+
+export function chalkOutline(x, z, y = 0.128) {
   const blood = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.4, 1.8),
+    new THREE.PlaneGeometry(2.6, 2.0),
     new THREE.MeshStandardMaterial({
       map: bloodTex,
       transparent: true,
@@ -970,1266 +933,513 @@ export function chalkOutline(x, z) {
     }),
   )
   blood.rotation.x = -Math.PI / 2
-  blood.position.set(x + .45, .035, z - .35)
+  blood.position.set(x + .35, y - 0.003, z - .25)
   scene.add(blood)
+
+  const chalkMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.4, 3.2),
+    new THREE.MeshBasicMaterial({
+      map: chalkTex,
+      transparent: true,
+      opacity: 0.94,
+      depthWrite: false,
+    }),
+  )
+  chalkMesh.rotation.x = -Math.PI / 2
+  chalkMesh.position.set(x, y, z)
+  scene.add(chalkMesh)
+
+  tagInteractive(chalkMesh, 'body', '死者遗体痕迹', 'clue')
   tagInteractive(blood, 'body', '死者遗体痕迹', 'clue')
 }
 
-/* ── 世界搭建 ── */
-export const ITAB = {}
-
-// 铁匠铺（案发现场）
-wallRects(buildingShell(-26, -20, -14, -10, 3.2, 0x4a3f38, { side: 'S', a: -22.0, b: -18.0 }))
-box(11.5, .12, 9.5, 0x2b2622, -20, .06, -15, false)
-
-function createDetailedAnvil() {
-  const g = new THREE.Group()
-  const ironM = mat(0x343942, { roughness: 0.38, metalness: 0.72 })
-
-  const baseB = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.28, 0.62), ironM)
-  baseB.position.y = 0.14
-  baseB.castShadow = true
-  g.add(baseB)
-
-  const waist = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.38, 0.42), ironM)
-  waist.position.y = 0.44
-  waist.castShadow = true
-  g.add(waist)
-
-  const topFace = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.22, 0.54), ironM)
-  topFace.position.set(-0.06, 0.72, 0)
-  topFace.castShadow = true
-  g.add(topFace)
-
-  const horn = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.58, 8), ironM)
-  horn.rotation.z = -Math.PI / 2
-  horn.position.set(0.62, 0.72, 0)
-  horn.castShadow = true
-  g.add(horn)
-
-  const step = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.14, 0.5), ironM)
-  step.position.set(-0.54, 0.68, 0)
-  g.add(step)
-
-  return g
-}
-
-const anvil = createDetailedAnvil()
-anvil.position.set(-22.5, 0, -14)
-scene.add(anvil)
-
-const forgeGroup = new THREE.Group()
-const stoneMat = mat(0x342e27, { map: wallPlasterTex, roughness: 0.9 })
-const fBase = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.35, 1.8), stoneMat)
-fBase.position.set(0, 0.68, 0)
-fBase.castShadow = true
-fBase.receiveShadow = true
-forgeGroup.add(fBase)
-
-const hood = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 1.05, 1.4, 4), stoneMat)
-hood.position.set(0, 2.05, 0)
-hood.rotation.y = Math.PI / 4
-hood.castShadow = true
-forgeGroup.add(hood)
-
-const fChimney = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.38, 1.2, 6), stoneMat)
-fChimney.position.set(0, 3.2, 0)
-forgeGroup.add(fChimney)
-
-const hearthHole = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.55, 0.85), mat(0x181412))
-hearthHole.position.set(0, 1.05, 0.52)
-forgeGroup.add(hearthHole)
-
-const bellows = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.3, 0.85), mat(0x423020, { map: woodTex }))
-bellows.position.set(1.15, 0.8, -0.2)
-forgeGroup.add(bellows)
-
-const coalGroup = new THREE.Group()
-const coalM = mat(0x1c1716, { roughness: 0.95 })
-for (let i = 0; i < 9; i++) {
-  const cl = new THREE.Mesh(new THREE.DodecahedronGeometry(rand(0.08, 0.15), 0), coalM)
-  cl.position.set(rand(-0.45, 0.45), 1.08 + rand(0, 0.08), 0.45 + rand(-0.2, 0.2))
-  coalGroup.add(cl)
-}
-forgeGroup.add(coalGroup)
-
-forgeGroup.position.set(-24.6, 0, -18.6)
-scene.add(forgeGroup)
-
-const emberTex = canvasTex(128, 128, (x, w, h) => {
-  x.fillStyle = '#ff2800'
-  x.fillRect(0, 0, w, h)
-  for (let i = 0; i < 40; i++) {
-    const px = rand(0, w), py = rand(0, h), r = rand(6, 18)
-    const gr = x.createRadialGradient(px, py, 1, px, py, r)
-    gr.addColorStop(0, '#fff4a0')
-    gr.addColorStop(0.35, '#ff6e14')
-    gr.addColorStop(1, 'rgba(160, 20, 0, 0)')
-    x.fillStyle = gr
-    x.beginPath()
-    x.arc(px, py, r, 0, Math.PI * 2)
-    x.fill()
-  }
-  for (let i = 0; i < 28; i++) {
-    x.fillStyle = '#1c100c'
-    x.beginPath()
-    x.arc(rand(0, w), rand(0, h), rand(4, 10), 0, Math.PI * 2)
-    x.fill()
-  }
-})
-
-export const embers = new THREE.Mesh(new THREE.PlaneGeometry(1.3, .75), new THREE.MeshStandardMaterial({
-  map: emberTex,
-  color: 0xff480c,
-  emissive: 0xff3b00,
-  emissiveMap: emberTex,
-  emissiveIntensity: 2.6,
-  roughness: 0.45,
-}))
-embers.rotation.x = -Math.PI / 2
-embers.position.set(-24.6, 1.38, -18.15)
-scene.add(embers)
-
-export const forgeLight = new THREE.PointLight(0xff7733, 1.15, 10.5, 2)
-forgeLight.position.set(-24.6, 2.2, -18.1)
-scene.add(forgeLight)
-tagInteractive(anvil, 'anvil', '铁砧', 'env')
-tagInteractive(embers, 'forge', '锻炉余烬', 'env')
-chalkOutline(-19, -15)
-blockRect(-22.5 - .65, -14 - .35, -22.5 + .65, -14 + .35, 0)
-blockRect(-24.6 - 1.15, -18.6 - .95, -24.6 + 1.15, -18.6 + .95, 0)
-
-export const hammerM = new THREE.Group()
-const hammerHandle = new THREE.Mesh(new THREE.CylinderGeometry(.035, .04, .68, 8), mat(0x56422d, { map: woodTex }))
-hammerHandle.rotation.x = Math.PI / 2
-hammerHandle.castShadow = true
-hammerM.add(hammerHandle)
-
-const hammerGrip = new THREE.Mesh(new THREE.CylinderGeometry(.045, .045, .28, 8), mat(0x281e16))
-hammerGrip.rotation.x = Math.PI / 2
-hammerGrip.position.z = -.18
-hammerM.add(hammerGrip)
-
-const hammerHead = new THREE.Mesh(new THREE.BoxGeometry(.18, .18, .26), mat(0x424852, { roughness: 0.35, metalness: 0.8 }))
-hammerHead.position.z = .32
-hammerHead.castShadow = true
-hammerM.add(hammerHead)
-
-const hammerPeen = new THREE.Mesh(new THREE.ConeGeometry(.09, .14, 4), mat(0x3a404a, { roughness: 0.4, metalness: 0.75 }))
-hammerPeen.rotation.x = -Math.PI / 2
-hammerPeen.position.z = .48
-hammerM.add(hammerPeen)
-
-const hammerBlood = new THREE.Mesh(new THREE.BoxGeometry(.19, .19, .16), mat(0x6e1b1b, { roughness: 0.3 }))
-hammerBlood.position.z = .26
-hammerM.add(hammerBlood)
-
-hammerM.position.set(-18.1, .12, -14.2)
-hammerM.rotation.y = .8
-scene.add(hammerM)
-
-export const hamRing = new THREE.Mesh(new THREE.RingGeometry(.5, .64, 32),
-  new THREE.MeshBasicMaterial({ color: 0xd9a441, transparent: true, opacity: .5, side: THREE.DoubleSide }))
-hamRing.rotation.x = -Math.PI / 2
-hamRing.position.set(-18.1, .05, -14.2)
-scene.add(hamRing)
-tagInteractive(hammerM, 'hammer', '染血的铁锤', 'clue')
-
-box(1.8, .9, .9, 0x4a3a2c, -15.6, .45, -18.6)
-blockRect(-15.6 - .9, -18.6 - .45, -15.6 + .9, -18.6 + .45, 0)
-
-const letterTex = canvasTex(64, 64, (x) => {
-  x.fillStyle = '#f0e6ce'
-  x.fillRect(0, 0, 64, 64)
-  x.fillStyle = '#2b231c'
-  for (let i = 0; i < 5; i++) {
-    x.fillRect(8, 12 + i * 8, 48, 2)
-  }
-  x.fillStyle = '#8a2424'
-  x.beginPath()
-  x.arc(50, 48, 5, 0, Math.PI * 2)
-  x.fill()
-})
-
-export const letterM = new THREE.Mesh(new THREE.PlaneGeometry(.42, .32), new THREE.MeshStandardMaterial({
-  map: letterTex,
-  roughness: 0.75,
-}))
-letterM.rotation.x = -Math.PI / 2
-letterM.rotation.z = .4
-letterM.position.set(-15.5, .96, -18.5)
-scene.add(letterM)
-tagInteractive(letterM, 'letter', '桌上的信件', 'clue')
-
-barrel(-25, -11.2)
-barrel(-24.2, -11.6, .9)
-barrel(-25.2, -12.1, .85)
-
-export const apronM = new THREE.Mesh(new THREE.PlaneGeometry(.58, .7),
-  new THREE.MeshLambertMaterial({ color: 0x6e3434, side: THREE.DoubleSide }))
-apronM.rotation.x = -Math.PI / 2
-apronM.rotation.z = 1
-apronM.position.set(-24.6, .06, -11.4)
-scene.add(apronM)
-tagInteractive(apronM, 'barrels', '成堆的木桶', 'env')
-
-box(1.9, .55, 1.2, 0x3a3128, -15.4, .28, -11.4)
-blockRect(-15.4 - .95, -11.4 - .6, -15.4 + .95, -11.4 + .6, 0)
-const mbox = box(.5, .35, .4, 0x5a4a2e, -15.2, .1, -11.1)
-tagInteractive(mbox, 'moneybox', '床底的钱匣', 'env')
-
-// 玛莎家
-wallRects(buildingShell(-24, 8, -16, 16, 3, 0x44404e, { side: 'N', a: -21.5, b: -18.5 }))
-box(7.5, .12, 7.5, 0x2b2730, -20, .06, 12, false)
-table(-18.2, 13.6)
-const dresser = box(1.2, 1.3, .7, 0x4e3c2e, -22.6, .65, 13.8)
-box(1.3, .1, .8, 0x5e4a38, -22.6, 1.34, 13.8)
-blockRect(-22.6 - .6, 13.8 - .35, -22.6 + .6, 13.8 + .35, 0)
-tagInteractive(dresser, 'dresser', '梳妆台', 'env')
-
-// 酒馆「野猪头」
-wallRects(buildingShell(10, -18, 24, -8, 3.4, 0x4e4034, { side: 'S', a: 15.0, b: 19.0 }))
-box(13.5, .12, 9.5, 0x2e2620, 17, .06, -13, false)
-box(1.2, 1.1, 7, 0x3c3024, 22.6, .55, -13)
-box(1.4, .12, 7.4, 0x4e3e2e, 22.6, 1.16, -13)
-blockRect(22.6 - .6, -13 - 3.5, 22.6 + .6, -13 + 3.5, 0)
-table(13, -12)
-table(15, -15.5)
-table(19.5, -14.5)
-stool(12.3, -12.6)
-stool(13.8, -11.4)
-stool(19, -13.6)
-box(2.2, .7, .12, 0x2a2018, 17, 3.9, -7.9, false)
-
-const barrelSign = new THREE.Mesh(new THREE.CylinderGeometry(.28, .28, .52, 12), mat(0x5a4230, { map: woodTex }))
-barrelSign.rotation.z = Math.PI / 2
-barrelSign.position.set(17, 3.9, -7.75)
-scene.add(barrelSign)
-
-// 当铺
-wallRects(buildingShell(14, 8, 24, 16, 3.2, 0x3e4448, { side: 'N', a: 17.0, b: 21.0 }))
-box(9.5, .12, 7.5, 0x272c30, 19, .06, 12, false)
-table(21.5, 12)
-box(1.6, 1.9, .5, 0x30363c, 15, 1, 14.6)
-blockRect(15 - .8, 14.6 - .25, 15 + .8, 14.6 + .25, 0)
-
-// 暗巷与栅栏门
-blockRect(25.4, -16, 26, -2, 0)
-blockRect(25.4, 2, 26, 14, 0)
-blockRect(30.5, -16, 31.2, -2, 0)
-blockRect(30.5, 2, 31.2, 14, 0)
-crate(29.5, 6.5)
-crate(26.8, -6, .8)
-barrel(27.2, -9, .8)
-
-export const walletM = new THREE.Mesh(new THREE.BoxGeometry(.32, .09, .24), mat(0x5a3a24, { map: woodTex, roughness: 0.7 }))
-walletM.position.set(28.6, .08, 5.2)
-walletM.rotation.y = .6
-scene.add(walletM)
-tagInteractive(walletM, 'wallet', '破旧的钱包', 'item')
-
-gateMesh = new THREE.Group()
-for (let i = 0; i < 6; i++) {
-  const b = new THREE.Mesh(new THREE.BoxGeometry(.1, 1.5, .1), mat(0x2c2f36, { metalness: 0.6 }))
-  b.position.set(26 + i * .85, .75, 0)
-  gateMesh.add(b)
-  const tip = new THREE.Mesh(new THREE.ConeGeometry(.07, .2, 4), mat(0x2c2f36, { metalness: 0.7 }))
-  tip.position.set(26 + i * .85, 1.6, 0)
-  gateMesh.add(tip)
-}
-const gb = new THREE.Mesh(new THREE.BoxGeometry(5.2, .12, .12), mat(0x3a3e46, { metalness: 0.65 }))
-gb.position.set(28.2, 1.2, 0)
-gateMesh.add(gb)
-const gb2 = gb.clone()
-gb2.position.y = .4
-gateMesh.add(gb2)
-scene.add(gateMesh)
-tagInteractive(gb, 'gate', '暗巷栅栏门', 'env')
-
-export function openGate() {
-  if (hasFlag('gateOpen')) {
-    return
-  }
-  setFlag('gateOpen')
-  scene.remove(gateMesh)
-}
-
-// 告示板
-const boardProp = new THREE.Group()
-const corkTex = canvasTex(128, 128, (x, w, h) => {
-  x.fillStyle = '#826244'
-  x.fillRect(0, 0, w, h)
-  for (let i = 0; i < 300; i++) {
-    x.fillStyle = Math.random() < 0.5 ? 'rgba(80, 50, 25, 0.4)' : 'rgba(165, 130, 95, 0.35)'
-    x.fillRect(rand(0, w), rand(0, h), rand(2, 4), rand(2, 4))
-  }
-})
-box(.16, 2.2, .16, 0x3a2e22, -1.4, 1.1, 7.2)
-box(.16, 2.2, .16, 0x3a2e22, .6, 1.1, 7.2)
-const cork = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.5, .1), mat(0x8a6844, { map: corkTex, roughness: 0.9 }))
-cork.position.set(-.4, 1.55, 7.2)
-cork.castShadow = true
-boardProp.add(cork)
-
-const frameT = new THREE.Mesh(new THREE.BoxGeometry(2.52, .1, .14), mat(0x322418, { map: woodTex }))
-frameT.position.set(-.4, 2.32, 7.2)
-boardProp.add(frameT)
-const frameB = frameT.clone()
-frameB.position.y = .78
-boardProp.add(frameB)
-
-scene.add(boardProp)
-blockRect(-1.5, 7.0, .7, 7.4, 0)
-for (let i = 0; i < 4; i++) {
-  const p = new THREE.Mesh(new THREE.PlaneGeometry(.4, .5), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xe0d4b8 : 0xcfd4da }))
-  p.position.set(-1.1 + i * .45, 1.55 + rand(-.2, .2), 7.26)
-  p.rotation.z = rand(-.2, .2)
-  boardProp.add(p)
-}
-tagInteractive(cork, 'board', '调查告示板', 'board')
-
-// 喷泉
-const fountainGroup = new THREE.Group()
-const fbase = new THREE.Mesh(new THREE.CylinderGeometry(2.1, 2.35, .75, 24), mat(0x363f4a, { roughness: 0.65, metalness: 0.18 }))
-fbase.position.y = .375
-fbase.castShadow = true
-fbase.receiveShadow = true
-fountainGroup.add(fbase)
-
-const fRim = new THREE.Mesh(new THREE.TorusGeometry(2.15, 0.12, 8, 24), mat(0x28303a, { roughness: 0.6 }))
-fRim.rotation.x = Math.PI / 2
-fRim.position.y = .74
-fountainGroup.add(fRim)
-
-const fwaterTex = canvasTex(256, 256, (x, w, h) => {
-  x.fillStyle = '#1b3f56'
-  x.fillRect(0, 0, w, h)
-  const cx = w / 2, cy = h / 2
-  for (let r = 10; r < 120; r += 16) {
-    x.strokeStyle = 'rgba(120, 200, 240, 0.28)'
-    x.lineWidth = 3
-    x.beginPath()
-    x.arc(cx, cy, r, 0, Math.PI * 2)
-    x.stroke()
-  }
-})
-
-export const fwater = new THREE.Mesh(new THREE.CircleGeometry(1.9, 32), new THREE.MeshStandardMaterial({
-  map: fwaterTex,
-  color: 0x1f506e,
-  roughness: 0.15,
-  metalness: 0.4,
-  transparent: true,
-  opacity: 0.88,
-}))
-fwater.rotation.x = -Math.PI / 2
-fwater.position.y = .72
-fountainGroup.add(fwater)
-
-const fpil = new THREE.Mesh(new THREE.CylinderGeometry(.22, .34, 1.6, 12), mat(0x404854, { roughness: 0.6, metalness: 0.2 }))
-fpil.position.y = 1.35
-fpil.castShadow = true
-fountainGroup.add(fpil)
-
-const fBowl = new THREE.Mesh(new THREE.CylinderGeometry(.68, .42, .24, 16), mat(0x353d48, { roughness: 0.6, metalness: 0.2 }))
-fBowl.position.y = 1.85
-fBowl.castShadow = true
-fountainGroup.add(fBowl)
-
-const fSpout = new THREE.Mesh(new THREE.SphereGeometry(.14, 10, 10), mat(0x525c68, { metalness: 0.4 }))
-fSpout.position.y = 2.05
-fountainGroup.add(fSpout)
-
-fountainGroup.position.set(0, 0, 0)
-scene.add(fountainGroup)
-
-for (let gx = -2; gx <= 2; gx++) {
-  for (let gz = -2; gz <= 2; gz++) {
-    if (gx * gx + gz * gz <= 5.3) {
-      const gX = gx + 40, gZ = gz + 28
-      blocked[gZ * GW + gX] = 1
-    }
-  }
-}
-tagInteractive(fbase, 'fountain', '广场喷泉', 'env')
-
-/* ── 粒子系统 ── */
-const mistTex = canvasTex(128, 128, (x, w, h) => {
-  const g = x.createRadialGradient(64, 64, 4, 64, 64, 64)
-  g.addColorStop(0, 'rgba(190, 215, 245, 0.95)')
-  g.addColorStop(0.3, 'rgba(150, 180, 220, 0.45)')
-  g.addColorStop(0.65, 'rgba(110, 140, 185, 0.12)')
-  g.addColorStop(1, 'rgba(70, 100, 150, 0)')
-  x.fillStyle = g
-  x.fillRect(0, 0, w, h)
-})
-
-const mistCount = 140
-const mistGeo = new THREE.BufferGeometry()
-const mistPos = new Float32Array(mistCount * 3)
-const mistVel = []
-for (let i = 0; i < mistCount; i++) {
-  mistPos[i * 3] = rand(-38, 38)
-  mistPos[i * 3 + 1] = rand(0.3, 1.8)
-  mistPos[i * 3 + 2] = rand(-26, 26)
-  mistVel.push({
-    vx: rand(-0.45, -0.18),
-    vz: rand(-0.12, 0.12),
-    baseY: rand(0.5, 1.4),
-    phase: Math.random() * Math.PI * 2,
-  })
-}
-mistGeo.setAttribute('position', new THREE.BufferAttribute(mistPos, 3))
-const mistPoints = new THREE.Points(
-  mistGeo,
-  new THREE.PointsMaterial({
-    map: mistTex,
-    size: 7.6,
-    transparent: true,
-    opacity: 0.17,
-    depthWrite: false,
-    blending: THREE.NormalBlending,
-  }),
-)
-scene.add(mistPoints)
-
-const sparkTex = canvasTex(64, 64, (x, w, h) => {
-  const g = x.createRadialGradient(32, 32, 2, 32, 32, 32)
-  g.addColorStop(0, '#ffffff')
-  g.addColorStop(0.2, '#ffea78')
-  g.addColorStop(0.55, 'rgba(255, 110, 20, 0.75)')
-  g.addColorStop(1, 'rgba(255, 60, 0, 0)')
-  x.fillStyle = g
-  x.fillRect(0, 0, w, h)
-})
-
-const sparkCount = 60
-const sparkGeo = new THREE.BufferGeometry()
-const sparkPos = new Float32Array(sparkCount * 3)
-const sparkColors = new Float32Array(sparkCount * 3)
-const sparkData = []
-for (let i = 0; i < sparkCount; i++) {
-  sparkPos[i * 3] = -24.6 + rand(-0.45, 0.45)
-  sparkPos[i * 3 + 1] = 1.4 + rand(0, 1.8)
-  sparkPos[i * 3 + 2] = -18.15 + rand(-0.35, 0.35)
-  sparkColors[i * 3] = 1.0
-  sparkColors[i * 3 + 1] = 0.75
-  sparkColors[i * 3 + 2] = 0.2
-  sparkData.push({
-    vy: rand(0.65, 1.45),
-    vx: rand(-0.15, 0.15),
-    vz: rand(-0.15, 0.15),
-    life: rand(0.6, 2.2),
-    age: Math.random() * 2.0,
-    sway: rand(1.5, 3.5),
-    seed: Math.random() * 20,
-  })
-}
-sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3))
-sparkGeo.setAttribute('color', new THREE.BufferAttribute(sparkColors, 3))
-const sparkPoints = new THREE.Points(
-  sparkGeo,
-  new THREE.PointsMaterial({
-    map: sparkTex,
-    vertexColors: true,
-    size: 0.32,
-    transparent: true,
-    opacity: 0.95,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  }),
-)
-scene.add(sparkPoints)
-
-const smokeCount = 18
-const smokeGeo = new THREE.BufferGeometry()
-const smokePos = new Float32Array(smokeCount * 3)
-const smokeData = []
-for (let i = 0; i < smokeCount; i++) {
-  smokePos[i * 3] = -24.6 + rand(-0.25, 0.25)
-  smokePos[i * 3 + 1] = 1.6 + rand(0, 2.0)
-  smokePos[i * 3 + 2] = -18.15 + rand(-0.2, 0.2)
-  smokeData.push({
-    vy: rand(0.4, 0.8),
-    age: Math.random() * 3.0,
-    life: rand(2.2, 3.8),
-    seed: Math.random() * 10,
-  })
-}
-smokeGeo.setAttribute('position', new THREE.BufferAttribute(smokePos, 3))
-const smokePoints = new THREE.Points(
-  smokeGeo,
-  new THREE.PointsMaterial({
-    map: mistTex,
-    size: 2.2,
-    color: 0x38302a,
-    transparent: true,
-    opacity: 0.22,
-    depthWrite: false,
-  }),
-)
-scene.add(smokePoints)
-
-const rainStreakTex = canvasTex(32, 128, (x, w, h) => {
-  const gr = x.createLinearGradient(0, 0, 0, h)
-  gr.addColorStop(0, 'rgba(160, 195, 230, 0)')
-  gr.addColorStop(0.4, 'rgba(175, 210, 245, 0.55)')
-  gr.addColorStop(1, 'rgba(215, 235, 255, 0.9)')
-  x.fillStyle = gr
-  x.fillRect(w / 2 - 2, 0, 4, h)
-})
-
-const rainCount = 320
-const rainGeo = new THREE.BufferGeometry()
-const rainPos = new Float32Array(rainCount * 3)
-const rainVel = []
-for (let i = 0; i < rainCount; i++) {
-  rainPos[i * 3] = rand(-40, 40)
-  rainPos[i * 3 + 1] = rand(0.5, 24)
-  rainPos[i * 3 + 2] = rand(-28, 28)
-  rainVel.push(rand(14.0, 22.0))
-}
-rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3))
-const rainPoints = new THREE.Points(
-  rainGeo,
-  new THREE.PointsMaterial({
-    map: rainStreakTex,
-    color: 0x9ec0e2,
-    size: 0.28,
-    transparent: true,
-    opacity: 0.48,
-    depthWrite: false,
-  }),
-)
-scene.add(rainPoints)
-
-const splashTex = canvasTex(64, 64, (x, w, h) => {
-  const cx = w / 2, cy = h / 2
-  x.strokeStyle = 'rgba(190, 220, 255, 0.85)'
-  x.lineWidth = 3
-  x.beginPath()
-  x.arc(cx, cy, 24, 0, Math.PI * 2)
-  x.stroke()
-  for (let i = 0; i < 6; i++) {
-    const a = (i * Math.PI) / 3
-    x.fillStyle = 'rgba(215, 235, 255, 0.9)'
-    x.fillRect(cx + Math.cos(a) * 26 - 1, cy + Math.sin(a) * 26 - 1, 3, 3)
-  }
-})
-
-const splashCount = 36
-const splashGeo = new THREE.BufferGeometry()
-const splashPos = new Float32Array(splashCount * 3)
-const splashData = []
-for (let i = 0; i < splashCount; i++) {
-  splashPos[i * 3] = rand(-38, 38)
-  splashPos[i * 3 + 1] = 0.05
-  splashPos[i * 3 + 2] = rand(-26, 26)
-  splashData.push({
-    life: rand(0.2, 0.45),
-    age: Math.random() * 0.4,
-  })
-}
-splashGeo.setAttribute('position', new THREE.BufferAttribute(splashPos, 3))
-const splashPoints = new THREE.Points(
-  splashGeo,
-  new THREE.PointsMaterial({
-    map: splashTex,
-    size: 0.65,
-    transparent: true,
-    opacity: 0.38,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  }),
-)
-scene.add(splashPoints)
-
-const fDropletCount = 42
-const fDropGeo = new THREE.BufferGeometry()
-const fDropPos = new Float32Array(fDropletCount * 3)
-const fDropVel = []
-for (let i = 0; i < fDropletCount; i++) {
-  const ang = (i / fDropletCount) * Math.PI * 2
-  const spd = rand(0.5, 1.1)
-  fDropPos[i * 3] = 0
-  fDropPos[i * 3 + 1] = 2.05
-  fDropPos[i * 3 + 2] = 0
-  fDropVel.push({
-    vx: Math.cos(ang) * spd,
-    vy: rand(1.2, 2.2),
-    vz: Math.sin(ang) * spd,
-    age: Math.random() * 1.5,
-  })
-}
-fDropGeo.setAttribute('position', new THREE.BufferAttribute(fDropPos, 3))
-const fDropPoints = new THREE.Points(
-  fDropGeo,
-  new THREE.PointsMaterial({
-    color: 0x98d4f8,
-    size: 0.16,
-    transparent: true,
-    opacity: 0.75,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  }),
-)
-scene.add(fDropPoints)
-
-const moteCount = 36
-const moteGeo = new THREE.BufferGeometry()
-const motePos = new Float32Array(moteCount * 3)
-const moteData = []
-for (let i = 0; i < moteCount; i++) {
-  const lampIdx = i % 6
-  const lpos = [[-10, -4.4], [10, -4.4], [-4.4, 12], [4.4, -13], [5.5, 5.5], [26.2, -1]][lampIdx]
-  motePos[i * 3] = lpos[0] + rand(-0.6, 0.6)
-  motePos[i * 3 + 1] = 3.5 + rand(-0.4, 0.4)
-  motePos[i * 3 + 2] = lpos[1] + rand(-0.6, 0.6)
-  moteData.push({
-    lx: lpos[0],
-    lz: lpos[1],
-    ang: Math.random() * Math.PI * 2,
-    rad: rand(0.3, 0.85),
-    spd: rand(1.2, 2.5),
-    bob: rand(1.5, 4.0),
-  })
-}
-moteGeo.setAttribute('position', new THREE.BufferAttribute(motePos, 3))
-const motePoints = new THREE.Points(
-  moteGeo,
-  new THREE.PointsMaterial({
-    map: sparkTex,
-    color: 0xffd27a,
-    size: 0.22,
-    transparent: true,
-    opacity: 0.85,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  }),
-)
-scene.add(motePoints)
-
-export function updateAtmosphere(dt, now) {
-  const mPos = mistGeo.attributes.position.array
-  for (let i = 0; i < mistCount; i++) {
-    const idx = i * 3
-    const v = mistVel[i]
-    mPos[idx] += v.vx * dt
-    mPos[idx + 2] += v.vz * dt
-    mPos[idx + 1] = v.baseY + Math.sin(now / 1400 + v.phase) * 0.35
-    if (mPos[idx] < -42) {
-      mPos[idx] = 42
-    }
-  }
-  mistGeo.attributes.position.needsUpdate = true
-
-  const sPos = sparkGeo.attributes.position.array
-  const sCol = sparkGeo.attributes.color.array
-  for (let i = 0; i < sparkCount; i++) {
-    const idx = i * 3
-    const d = sparkData[i]
-    d.age += dt
-    sPos[idx + 1] += d.vy * dt
-    sPos[idx] += Math.sin(now / 350 + d.seed) * 0.015 + d.vx * dt
-    sPos[idx + 2] += Math.cos(now / 350 + d.seed) * 0.015 + d.vz * dt
-    const progress = d.age / d.life
-    if (progress < 0.4) {
-      sCol[idx] = 1.0
-      sCol[idx + 1] = 0.85 - progress * 0.6
-      sCol[idx + 2] = 0.35
-    } else {
-      sCol[idx] = 1.0 - (progress - 0.4) * 0.7
-      sCol[idx + 1] = 0.3 * (1.0 - progress)
-      sCol[idx + 2] = 0.05
-    }
-    if (d.age >= d.life || sPos[idx + 1] > 3.6) {
-      d.age = 0
-      d.life = rand(0.8, 2.2)
-      sPos[idx] = -24.6 + rand(-0.4, 0.4)
-      sPos[idx + 1] = 1.4
-      sPos[idx + 2] = -18.15 + rand(-0.3, 0.3)
-      d.vy = rand(0.7, 1.5)
-      d.vx = rand(-0.18, 0.18)
-      d.vz = rand(-0.18, 0.18)
-    }
-  }
-  sparkGeo.attributes.position.needsUpdate = true
-  sparkGeo.attributes.color.needsUpdate = true
-
-  const smPos = smokeGeo.attributes.position.array
-  for (let i = 0; i < smokeCount; i++) {
-    const idx = i * 3
-    const d = smokeData[i]
-    d.age += dt
-    smPos[idx + 1] += d.vy * dt
-    smPos[idx] += Math.sin(now / 600 + d.seed) * 0.008
-    if (d.age >= d.life || smPos[idx + 1] > 3.8) {
-      d.age = 0
-      smPos[idx] = -24.6 + rand(-0.25, 0.25)
-      smPos[idx + 1] = 1.6
-      smPos[idx + 2] = -18.15 + rand(-0.2, 0.2)
-    }
-  }
-  smokeGeo.attributes.position.needsUpdate = true
-
-  const rPos = rainGeo.attributes.position.array
-  for (let i = 0; i < rainCount; i++) {
-    const idx = i * 3
-    rPos[idx + 1] -= rainVel[i] * dt
-    rPos[idx] -= dt * 2.8
-    if (rPos[idx + 1] < 0.08) {
-      rPos[idx] = rand(-40, 40)
-      rPos[idx + 1] = rand(16, 24)
-      rPos[idx + 2] = rand(-28, 28)
-    }
-  }
-  rainGeo.attributes.position.needsUpdate = true
-
-  const spPos = splashGeo.attributes.position.array
-  for (let i = 0; i < splashCount; i++) {
-    const idx = i * 3
-    const d = splashData[i]
-    d.age += dt
-    if (d.age >= d.life) {
-      d.age = 0
-      d.life = rand(0.2, 0.45)
-      spPos[idx] = rand(-38, 38)
-      spPos[idx + 2] = rand(-26, 26)
-    }
-  }
-  splashGeo.attributes.position.needsUpdate = true
-
-  const fdPos = fDropGeo.attributes.position.array
-  for (let i = 0; i < fDropletCount; i++) {
-    const idx = i * 3
-    const v = fDropVel[i]
-    v.age += dt
-    fdPos[idx] += v.vx * dt
-    fdPos[idx + 1] += v.vy * dt
-    fdPos[idx + 2] += v.vz * dt
-    v.vy -= 4.2 * dt
-    if (fdPos[idx + 1] <= 0.72 || v.age > 1.2) {
-      v.age = 0
-      const ang = (i / fDropletCount) * Math.PI * 2 + Math.random() * 0.2
-      const spd = rand(0.4, 0.95)
-      fdPos[idx] = 0
-      fdPos[idx + 1] = 2.05
-      fdPos[idx + 2] = 0
-      v.vx = Math.cos(ang) * spd
-      v.vy = rand(1.4, 2.2)
-      v.vz = Math.sin(ang) * spd
-    }
-  }
-  fDropGeo.attributes.position.needsUpdate = true
-
-  const mtPos = moteGeo.attributes.position.array
-  for (let i = 0; i < moteCount; i++) {
-    const idx = i * 3
-    const d = moteData[i]
-    d.ang += d.spd * dt
-    mtPos[idx] = d.lx + Math.cos(d.ang) * d.rad
-    mtPos[idx + 1] = 3.52 + Math.sin(now / 500 + d.bob) * 0.35
-    mtPos[idx + 2] = d.lz + Math.sin(d.ang) * d.rad
-  }
-  moteGeo.attributes.position.needsUpdate = true
-}
-
-// 背景房屋与树木
-solidHouse(-33, 10, 7, 6, 3.4, 0x3e3a44, 0x26222c)
-solidHouse(-33, -8, 7, 6, 3.2, 0x443e38, 0x2a2622)
-solidHouse(34, -9, 7, 6, 3.4, 0x3c4046, 0x24282e)
-solidHouse(9, 20, 7, 5.5, 3, 0x464038, 0x2a2620)
-solidHouse(-9, 21, 7, 5.5, 3.2, 0x40383e, 0x282228)
-solidHouse(34.5, 12, 6.5, 6, 3.2, 0x3e4448, 0x24282c)
-
-tree(-30, 2, 1.2)
-tree(-12, -23, 1)
-tree(6, -22, 1.15)
-tree(28, -20, 1)
-tree(35, 4, 1.2)
-tree(-36, -16, 1.1)
-tree(-36, 18, 1)
-tree(12, 24, 1.1)
-tree(-12, 24, 1)
-
-lamp(-10, -4.4)
-lamp(10, -4.4)
-lamp(-4.4, 12)
-lamp(4.4, -13)
-lamp(5.5, 5.5)
-lamp(26.2, -1)
-
-// 世界标签（区域）
-export const ZONES = [
-  { id: 'plaza', n: '集市广场', x: [-8, 8], z: [-8, 8] },
-  { id: 'smith', n: '铁匠铺 · 案发现场', x: [-27, -13], z: [-21, -9] },
-  { id: 'tavern', n: '「野猪头」酒馆', x: [9, 25], z: [-19, -7] },
-  { id: 'alley', n: '暗巷', x: [25, 32], z: [-17, 15] },
-  { id: 'home', n: '玛莎的家', x: [-25, -15], z: [7, 17] },
-  { id: 'pawn', n: '巴罗当铺', x: [13, 25], z: [7, 17] },
-]
-
-export function zoneAt(x, z) {
-  for (const zn of ZONES) {
-    if (x >= zn.x[0] && x <= zn.x[1] && z >= zn.z[0] && z <= zn.z[1]) {
-      return zn
-    }
-  }
-  return null
-}
-
-/* ── 角色 ── */
 export function makeChar(coat, hatC, opts) {
   opts = opts || {}
   const role = opts.role || 'detective'
   const g = new THREE.Group()
 
-  const torsoGroup = new THREE.Group()
-  torsoGroup.position.y = 0.9
-  g.add(torsoGroup)
+  const baseTorsoY = 0.82
+  g.userData.baseTorsoY = baseTorsoY
 
-  const skinColor = role === 'martha' ? 0xe2c7b2 : (role === 'pete' ? 0xd4a08c : (role === 'coroner' ? 0xc8b6a4 : 0xd5b99f))
-  const skinM = mat(skinColor, { roughness: 0.62, metalness: 0.02 })
-  const eyeM = mat(0x18202c, { roughness: 0.25, metalness: 0.1 })
-  const hairC = opts.hair || (role === 'coroner' ? 0x72767d : (role === 'greta' ? 0x8a847e : (role === 'luke' ? 0x5a3e24 : 0x221a16)))
-  const hairM = mat(hairC, { roughness: 0.9 })
+  const torsoGroup = new THREE.Group()
+  torsoGroup.position.y = baseTorsoY
+  g.add(torsoGroup)
+  g.userData.torsoGroup = torsoGroup
+
+  const skinColor = role === 'martha' ? 0xe4ccba : (role === 'pete' ? 0xd6a48e : (role === 'coroner'
+    ? 0xc8b8a8
+    : 0xd8bca2))
+  const skinM = mat(skinColor, { roughness: 0.65, metalness: 0.02 })
+  const eyeWhiteM = mat(0xf0ece2, { roughness: 0.35 })
+  const eyeM = mat(0x1a2230, { roughness: 0.25, metalness: 0.1 })
+  const hairC = opts.hair ||
+    (role === 'coroner' ? 0x767a82 : (role === 'greta' ? 0x8e8882 : (role === 'luke' ? 0x5a3c22 : 0x241c18)))
+  const hairM = mat(hairC, { roughness: 0.88 })
   const goldM = mat(0xd4af37, { metalness: 0.88, roughness: 0.22 })
-  const silverM = mat(0xa8b0bc, { metalness: 0.8, roughness: 0.28 })
-  const blackLeatherM = mat(0x1a1818, { roughness: 0.52, metalness: 0.08 })
-  const brownLeatherM = mat(0x382416, { roughness: 0.58, metalness: 0.05 })
-  const shirtM = mat(0xe2ded6, { roughness: 0.8 })
-  const pantColor = role === 'sheriff' ? 0x1a283c : (role === 'luke' ? 0x4a341e : (role === 'barrow' ? 0x1a141c : 0x1f2229))
-  const pantM = mat(pantColor, { roughness: 0.85 })
-  const coatM = mat(coat, { roughness: 0.82, metalness: 0.06 })
+  const silverM = mat(0xb4bcc8, { metalness: 0.82, roughness: 0.26 })
+  const blackLeatherM = mat(0x1a1818, { map: leatherTex, roughness: 0.46, metalness: 0.1 })
+  const brownLeatherM = mat(0x3e2819, { map: leatherTex, roughness: 0.52, metalness: 0.08 })
+  const shirtM = mat(0xe4ded4, { map: linenTex, roughness: 0.78 })
+  const pantColor = role === 'sheriff' ? 0x182436 : (role === 'luke' ? 0x48321c : (role === 'barrow'
+    ? 0x18141a
+    : 0x1e2228))
+  const pantM = mat(pantColor, { map: fabricTex, roughness: 0.82, metalness: 0.04 })
+  const coatM = mat(coat, { map: fabricTex, roughness: 0.78, metalness: 0.05 })
 
   const headGroup = new THREE.Group()
-  headGroup.position.y = 0.68
+  headGroup.position.y = 0.62
   torsoGroup.add(headGroup)
   g.userData.headGroup = headGroup
 
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.14, 8), skinM)
-  neck.position.y = -0.16
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.085, 0.14, 8), skinM)
+  neck.position.y = -0.13
   neck.castShadow = true
   headGroup.add(neck)
 
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.28, 0.26), skinM)
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.27, 0.25), skinM)
   head.castShadow = true
   headGroup.add(head)
 
-  const chin = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.09, 0.22), skinM)
-  chin.position.set(0, -0.13, 0.02)
+  const chin = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.08, 0.20), skinM)
+  chin.position.set(0, -0.12, 0.02)
   chin.castShadow = true
   headGroup.add(chin)
 
-  const noseColor = role === 'pete' ? 0xc86a5a : skinColor
+  const noseColor = role === 'pete' ? 0xc46252 : skinColor
   const noseM = role === 'pete' ? mat(noseColor, { roughness: 0.55 }) : skinM
-  const nose = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.07, 0.05), noseM)
-  nose.position.set(0, -0.01, 0.15)
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(role === 'pete' ? 0.052 : 0.042, 0.068, 0.05), noseM)
+  nose.position.set(0, -0.005, 0.145)
   headGroup.add(nose)
 
-  const browM = mat(hairC, { roughness: 0.9 })
-  for (const side of [-1, 1]) {
-    const brow = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.022, 0.03), browM)
-    brow.position.set(side * 0.065, 0.05, 0.135)
-    brow.rotation.z = side * (role === 'martha' ? 0.08 : (role === 'pete' ? -0.12 : -0.08))
-    headGroup.add(brow)
+  const lEar = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.065, 0.045), skinM)
+  lEar.position.set(-0.135, 0.005, -0.01)
+  headGroup.add(lEar)
+  const rEar = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.065, 0.045), skinM)
+  rEar.position.set(0.135, 0.005, -0.01)
+  headGroup.add(rEar)
 
-    const eye = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.03, 0.02), eyeM)
-    eye.position.set(side * 0.065, 0.015, 0.135)
-    headGroup.add(eye)
+  const lSclera = new THREE.Mesh(new THREE.BoxGeometry(0.050, 0.034, 0.012), eyeWhiteM)
+  lSclera.position.set(-0.062, 0.025, 0.130)
+  headGroup.add(lSclera)
+  const rSclera = new THREE.Mesh(new THREE.BoxGeometry(0.050, 0.034, 0.012), eyeWhiteM)
+  rSclera.position.set(0.062, 0.025, 0.130)
+  headGroup.add(rSclera)
 
-    const ear = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.08, 0.05), skinM)
-    ear.position.set(side * 0.14, 0, -0.02)
-    headGroup.add(ear)
+  const lPupil = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.030, 0.014), eyeM)
+  lPupil.position.set(-0.062, 0.024, 0.132)
+  headGroup.add(lPupil)
+  const rPupil = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.030, 0.014), eyeM)
+  rPupil.position.set(0.062, 0.024, 0.132)
+  headGroup.add(rPupil)
+
+  const lBrow = new THREE.Mesh(new THREE.BoxGeometry(0.072, 0.022, 0.018), hairM)
+  lBrow.position.set(-0.062, 0.058, 0.133)
+  lBrow.rotation.z = role === 'martha' ? -0.15 : (role === 'barrow' ? 0.2 : (role === 'pete' ? -0.08 : 0))
+  headGroup.add(lBrow)
+  const rBrow = new THREE.Mesh(new THREE.BoxGeometry(0.072, 0.022, 0.018), hairM)
+  rBrow.position.set(0.062, 0.058, 0.133)
+  rBrow.rotation.z = role === 'martha' ? 0.15 : (role === 'barrow' ? -0.2 : (role === 'pete' ? 0.08 : 0))
+  headGroup.add(rBrow)
+
+  if (role === 'coroner') {
+    const specM = silverM
+    const lRim = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.005, 6, 12), specM)
+    lRim.position.set(-0.062, 0.025, 0.138)
+    headGroup.add(lRim)
+    const rRim = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.005, 6, 12), specM)
+    rRim.position.set(0.062, 0.025, 0.138)
+    headGroup.add(rRim)
+    const bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.038, 4), specM)
+    bridge.rotation.z = Math.PI / 2
+    bridge.position.set(0, 0.028, 0.138)
+    headGroup.add(bridge)
   }
 
   if (role === 'sheriff') {
-    const st = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.035, 0.04), browM)
-    st.position.set(0, -0.06, 0.14)
-    headGroup.add(st)
+    const stache = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.045, 0.035), hairM)
+    stache.position.set(0, -0.06, 0.145)
+    headGroup.add(stache)
   } else if (role === 'barrow') {
-    const musL = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.028, 0.03), browM)
-    musL.position.set(-0.045, -0.055, 0.145)
-    musL.rotation.z = -0.22
-    headGroup.add(musL)
-    const musR = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.028, 0.03), browM)
-    musR.position.set(0.045, -0.055, 0.145)
-    musR.rotation.z = 0.22
-    headGroup.add(musR)
+    const stache = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.022, 0.03), hairM)
+    stache.position.set(0, -0.055, 0.145)
+    headGroup.add(stache)
   } else if (role === 'pete') {
-    const stubble = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.09, 0.05), mat(0x423832, { roughness: 0.95 }))
-    stubble.position.set(0, -0.09, 0.125)
+    const stache = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.04, 0.035), mat(0x443a32, { roughness: 0.95 }))
+    stache.position.set(0, -0.065, 0.145)
+    headGroup.add(stache)
+    const stubble = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.10, 0.03), mat(0x443a32, { roughness: 0.95 }))
+    stubble.position.set(0, -0.10, 0.135)
     headGroup.add(stubble)
   }
 
-  if (!opts.hat || role === 'martha') {
-    if (role === 'martha') {
-      const hairBase = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.22, 0.28), hairM)
-      hairBase.position.set(0, 0.08, -0.02)
-      headGroup.add(hairBase)
-      const bun = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), hairM)
-      bun.position.set(0, 0.06, -0.17)
-      headGroup.add(bun)
-      const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.22, 6), silverM)
-      pin.rotation.z = 0.7
-      pin.position.set(0, 0.09, -0.17)
-      headGroup.add(pin)
-      for (const side of [-1, 1]) {
-        const strand = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.18, 0.04), hairM)
-        strand.position.set(side * 0.14, -0.04, 0.06)
-        headGroup.add(strand)
-      }
-    } else {
-      const hBack = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.26, 0.27), hairM)
-      hBack.position.set(0, 0.06, -0.02)
-      headGroup.add(hBack)
-    }
-  }
+  const hasHat = opts.hat !== false && (hatC !== false && hatC !== undefined) && role !== 'martha' && role !== 'greta'
 
-  if (opts.hat !== false && role !== 'martha') {
-    const hatColor = hatC || 0x20242c
-    const hatM = mat(hatColor, { roughness: 0.76, metalness: 0.06 })
-    const ribbonM = mat(role === 'barrow' ? 0x4a121d : 0x15161a, { roughness: 0.5, metalness: 0.2 })
+  if (hasHat) {
+    const hairBack = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.18, 0.06), hairM)
+    hairBack.position.set(0, 0.00, -0.11)
+    headGroup.add(hairBack)
+    const hairL = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.14, 0.12), hairM)
+    hairL.position.set(-0.128, 0.02, -0.03)
+    headGroup.add(hairL)
+    const hairR = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.14, 0.12), hairM)
+    hairR.position.set(0.128, 0.02, -0.03)
+    headGroup.add(hairR)
+
+    const hatColor = hatC || coat
+    const hatM = mat(hatColor, { map: fabricTex, roughness: 0.72, metalness: 0.06 })
+    const hatGroup = new THREE.Group()
+    hatGroup.position.set(0, 0.15, 0)
 
     if (role === 'barrow') {
-      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.27, 0.03, 14), hatM)
-      brim.position.y = 0.16
-      headGroup.add(brim)
-      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.185, 0.18, 0.32, 14), hatM)
-      crown.position.y = 0.32
-      headGroup.add(crown)
-      const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.188, 0.183, 0.05, 14), ribbonM)
-      rib.position.y = 0.19
-      headGroup.add(rib)
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.165, 0.30, 16), hatM)
+      crown.position.y = 0.15
+      crown.castShadow = true
+      hatGroup.add(crown)
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.23, 0.025, 16), hatM)
+      brim.position.y = 0.01
+      brim.castShadow = true
+      hatGroup.add(brim)
+      const ribbon = new THREE.Mesh(new THREE.CylinderGeometry(0.168, 0.168, 0.045, 16), mat(0x7a1822))
+      ribbon.position.y = 0.04
+      hatGroup.add(ribbon)
     } else if (role === 'sheriff') {
-      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.03, 14), hatM)
-      brim.position.y = 0.15
-      headGroup.add(brim)
-      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.21, 0.17, 12), hatM)
-      crown.position.y = 0.24
-      headGroup.add(crown)
-      const star = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.02), goldM)
-      star.position.set(0, 0.24, 0.21)
-      star.rotation.z = 0.78
-      headGroup.add(star)
-    } else if (role === 'luke') {
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.19, 0.11, 10), hatM)
-      cap.position.set(0, 0.19, 0.02)
-      cap.rotation.x = 0.12
-      headGroup.add(cap)
-      const visor = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.025, 0.09), hatM)
-      visor.position.set(0, 0.14, 0.16)
-      visor.rotation.x = 0.18
-      headGroup.add(visor)
-      const fringe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.04), hairM)
-      fringe.position.set(0, 0.11, 0.13)
-      headGroup.add(fringe)
-    } else if (role === 'greta') {
-      const kerchief = new THREE.Mesh(new THREE.SphereGeometry(0.23, 10, 8), mat(hatColor, { roughness: 0.9 }))
-      kerchief.position.set(0, 0.08, -0.02)
-      headGroup.add(kerchief)
-      const knot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.05), mat(hatColor, { roughness: 0.9 }))
-      knot.position.set(0, -0.15, 0.13)
-      headGroup.add(knot)
-    } else if (role === 'pete') {
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.21, 0.09, 10), hatM)
-      cap.position.set(0.03, 0.18, -0.01)
-      cap.rotation.z = -0.22
-      cap.rotation.x = -0.1
-      headGroup.add(cap)
-      const messyH = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.08), hairM)
-      messyH.position.set(-0.11, 0.12, 0.08)
-      headGroup.add(messyH)
-    } else {
-      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.32, 0.025, 14), hatM)
-      brim.position.y = 0.15
-      headGroup.add(brim)
-      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.20, 0.17, 12), hatM)
-      crown.position.y = 0.24
-      crown.scale.set(0.92, 1, 1.1)
-      headGroup.add(crown)
-      const pinch = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 0.16), hatM)
-      pinch.position.set(0, 0.31, 0.04)
-      headGroup.add(pinch)
-      const rib = new THREE.Mesh(new THREE.CylinderGeometry(0.195, 0.202, 0.04, 12), ribbonM)
-      rib.position.y = 0.18
-      headGroup.add(rib)
-
-      if (role === 'coroner') {
-        const monocle = new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.005, 6, 12), goldM)
-        monocle.position.set(0.065, 0.015, 0.15)
-        headGroup.add(monocle)
-        const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.22, 4), goldM)
-        chain.position.set(0.09, -0.08, 0.13)
-        chain.rotation.z = -0.3
-        headGroup.add(chain)
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.025, 16), hatM)
+      brim.position.y = 0.01
+      brim.castShadow = true
+      hatGroup.add(brim)
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.175, 0.15, 16), hatM)
+      crown.position.y = 0.085
+      crown.castShadow = true
+      hatGroup.add(crown)
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.177, 0.177, 0.03, 16), mat(0x181818))
+      band.position.y = 0.03
+      hatGroup.add(band)
+      const badge = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.05, 0.02), goldM)
+      badge.position.set(0, 0.085, 0.175)
+      hatGroup.add(badge)
+    } else if (role === 'luke' || role === 'pete') {
+      const capCrown = new THREE.Mesh(new THREE.SphereGeometry(0.21, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), hatM)
+      capCrown.scale.set(1.08, 0.58, 1.16)
+      capCrown.position.set(0, 0.02, 0.02)
+      capCrown.castShadow = true
+      hatGroup.add(capCrown)
+      const capBrim = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.022, 0.13), hatM)
+      capBrim.position.set(0, 0.01, 0.15)
+      capBrim.rotation.x = 0.14
+      hatGroup.add(capBrim)
+      if (role === 'pete') {
+        hatGroup.rotation.z = -0.12
+        hatGroup.rotation.x = 0.05
       }
+    } else {
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.025, 16), hatM)
+      brim.position.y = 0.01
+      brim.scale.set(1, 1, 1.08)
+      brim.castShadow = true
+      hatGroup.add(brim)
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.14, 16), hatM)
+      crown.position.y = 0.075
+      crown.scale.set(0.92, 1, 1.10)
+      crown.castShadow = true
+      hatGroup.add(crown)
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.172, 0.172, 0.03, 16), mat(0x181818))
+      band.position.y = 0.03
+      hatGroup.add(band)
+    }
+    headGroup.add(hatGroup)
+  } else {
+    const hairTop = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.07, 0.26), hairM)
+    hairTop.position.set(0, 0.14, 0)
+    headGroup.add(hairTop)
+    const hairBack = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.22, 0.07), hairM)
+    hairBack.position.set(0, 0.02, -0.11)
+    headGroup.add(hairBack)
+    const hairL = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.18, 0.16), hairM)
+    hairL.position.set(-0.128, 0.03, -0.01)
+    headGroup.add(hairL)
+    const hairR = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.18, 0.16), hairM)
+    hairR.position.set(0.128, 0.03, -0.01)
+    headGroup.add(hairR)
+
+    if (role === 'martha') {
+      const bun = new THREE.Mesh(new THREE.SphereGeometry(0.10, 10, 8), hairM)
+      bun.position.set(0, 0.05, -0.17)
+      headGroup.add(bun)
+    }
+    if (role === 'greta') {
+      const bun = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), hairM)
+      bun.position.set(0, 0.16, -0.11)
+      headGroup.add(bun)
     }
   }
 
-  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.40, 0.28), coatM)
-  chest.position.y = 0.24
-  chest.castShadow = true
-  torsoGroup.add(chest)
+  const beltM = role === 'player' ? blackLeatherM : brownLeatherM
+  const belt = new THREE.Mesh(new THREE.BoxGeometry(0.445, 0.07, 0.265), beltM)
+  belt.position.y = 0.01
+  torsoGroup.add(belt)
+  const buckleM = (role === 'coroner' || role === 'sheriff') ? silverM : goldM
+  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.03), buckleM)
+  buckle.position.set(0, 0.01, 0.135)
+  torsoGroup.add(buckle)
 
-  const belly = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.22, 0.25), coatM)
-  belly.position.y = -0.03
-  belly.castShadow = true
-  torsoGroup.add(belly)
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.52, 0.26), coatM)
+  torso.position.y = 0.27
+  torso.castShadow = true
+  torso.receiveShadow = true
+  torsoGroup.add(torso)
 
-  const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.30, 0.04), shirtM)
-  shirt.position.set(0, 0.26, 0.13)
-  torsoGroup.add(shirt)
-
-  const lapelMat = role === 'barrow' ? mat(0x241818, { roughness: 0.95 }) : mat(opts.lapel || coat, { roughness: 0.82 })
-  for (const side of [-1, 1]) {
-    const lapel = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.32, 0.04), lapelMat)
-    lapel.position.set(side * 0.12, 0.26, 0.145)
-    lapel.rotation.z = side * -0.2
-    torsoGroup.add(lapel)
+  const buttonM = (role === 'sheriff' || role === 'barrow' || role === 'player') ? goldM : mat(0x282420)
+  for (let i = 0; i < 3; i++) {
+    const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.01, 8), buttonM)
+    btn.rotation.x = Math.PI / 2
+    btn.position.set(0, 0.12 + i * 0.10, 0.133)
+    torsoGroup.add(btn)
   }
 
-  if (role === 'coroner' || role === 'barrow') {
-    const tie = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.04, 0.03), mat(0x5a1a24, { roughness: 0.6 }))
-    tie.position.set(0, 0.38, 0.15)
-    torsoGroup.add(tie)
-  } else if (role !== 'martha' && role !== 'greta' && !opts.scarf) {
-    const tie = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.22, 0.02), mat(0x22262e, { roughness: 0.7 }))
-    tie.position.set(0, 0.26, 0.15)
-    torsoGroup.add(tie)
-  }
+  const collar = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.10, 0.22), coatM)
+  collar.position.set(0, 0.52, 0.02)
+  torsoGroup.add(collar)
 
-  for (let r = 0; r < 3; r++) {
-    const btnY = 0.14 + r * 0.09
-    const btnM = role === 'sheriff' || role === 'barrow' ? goldM : mat(0x202428, { metalness: 0.7, roughness: 0.3 })
-    for (const side of [-1, 1]) {
-      const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.015, 6), btnM)
-      btn.rotation.x = Math.PI / 2
-      btn.position.set(side * 0.065, btnY, 0.14)
-      torsoGroup.add(btn)
+  const lLapel = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.22, 0.02), coatM)
+  lLapel.position.set(-0.09, 0.38, 0.132)
+  lLapel.rotation.z = -0.15
+  torsoGroup.add(lLapel)
+  const rLapel = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.22, 0.02), coatM)
+  rLapel.position.set(0.09, 0.38, 0.132)
+  rLapel.rotation.z = 0.15
+  torsoGroup.add(rLapel)
+
+  const innerShirt = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.28, 0.03), shirtM)
+  innerShirt.position.set(0, 0.38, 0.125)
+  torsoGroup.add(innerShirt)
+
+  if (role === 'detective' || role === 'player' || role === 'barrow' || role === 'sheriff') {
+    const tieM = role === 'barrow' ? mat(0x6e1b24) : (role === 'player' ? mat(0x8a2424) : mat(0x182230))
+    const tie = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.24, 0.02), tieM)
+    tie.position.set(0, 0.33, 0.136)
+    torsoGroup.add(tie)
+    if (role === 'barrow') {
+      const pin = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), goldM)
+      pin.position.set(0, 0.40, 0.147)
+      torsoGroup.add(pin)
     }
-  }
-
-  if (opts.badge || role === 'sheriff') {
-    const star = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.02), goldM)
-    star.position.set(-0.13, 0.34, 0.15)
-    star.rotation.z = 0.78
-    torsoGroup.add(star)
   }
 
   if (role === 'barrow') {
-    const chain = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.007, 4, 10, Math.PI), goldM)
-    chain.position.set(0, 0.12, 0.14)
-    chain.rotation.x = Math.PI
-    torsoGroup.add(chain)
+    const watchChain = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.008, 4, 10, Math.PI), goldM)
+    watchChain.rotation.z = Math.PI
+    watchChain.position.set(0.06, 0.16, 0.134)
+    torsoGroup.add(watchChain)
+  }
+
+  if (role === 'sheriff' || opts.badge) {
+    const star = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.02), goldM)
+    star.position.set(0.12, 0.38, 0.135)
+    star.rotation.z = Math.PI / 4
+    torsoGroup.add(star)
+    const holster = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.16, 0.09), brownLeatherM)
+    holster.position.set(0.23, 0.00, 0.02)
+    holster.castShadow = true
+    torsoGroup.add(holster)
   }
 
   if (opts.scarf) {
-    const sMat = mat(opts.scarf, { roughness: 0.88 })
-    const sNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.20, 0.14, 10), sMat)
-    sNeck.position.y = 0.47
-    torsoGroup.add(sNeck)
-    const sTail = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.38, 0.04), sMat)
-    sTail.position.set(-0.09, 0.27, 0.16)
-    sTail.rotation.z = 0.14
-    torsoGroup.add(sTail)
+    const scM = mat(opts.scarf, { roughness: 0.82 })
+    const scRing = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.045, 6, 14), scM)
+    scRing.rotation.x = Math.PI / 2
+    scRing.position.set(0, 0.53, 0)
+    torsoGroup.add(scRing)
+    const scTail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.24, 0.03), scM)
+    scTail.position.set(0.08, 0.34, 0.14)
+    scTail.rotation.z = -0.1
+    torsoGroup.add(scTail)
+  }
+
+  if (role === 'greta') {
+    const shawl = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.44, 0.24, 10),
+      mat(0x5a3e30, { map: fabricTex, roughness: 0.9 }))
+    shawl.position.set(0, 0.40, 0)
+    torsoGroup.add(shawl)
   }
 
   if (role === 'martha') {
-    const shawlM = mat(0x50425a, { roughness: 0.9 })
-    const shawl = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.22, 0.30), shawlM)
-    shawl.position.set(0, 0.32, -0.01)
-    torsoGroup.add(shawl)
-    const brooch = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 8), silverM)
-    brooch.position.set(0, 0.34, 0.15)
-    torsoGroup.add(brooch)
+    const bib = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.26, 0.02), mat(0xd8d2c4, { map: linenTex }))
+    bib.position.set(0, 0.30, 0.134)
+    torsoGroup.add(bib)
+    const strapL = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.22, 0.02), mat(0xd8d2c4, { map: linenTex }))
+    strapL.position.set(-0.10, 0.40, 0.125)
+    torsoGroup.add(strapL)
+    const strapR = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.22, 0.02), mat(0xd8d2c4, { map: linenTex }))
+    strapR.position.set(0.10, 0.40, 0.125)
+    torsoGroup.add(strapR)
+    const apronSkirt = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.52, 0.02), mat(0xd8d2c4, { map: linenTex }))
+    apronSkirt.position.set(0, -0.26, 0.16)
+    torsoGroup.add(apronSkirt)
+    const apronPocket = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.025), mat(0xc8c2b4, { map: linenTex }))
+    apronPocket.position.set(0, -0.22, 0.17)
+    torsoGroup.add(apronPocket)
   }
 
-  const belt = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.07, 0.26), blackLeatherM)
-  belt.position.y = -0.14
-  torsoGroup.add(belt)
-  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.08, 0.03), goldM)
-  buckle.position.set(0, -0.14, 0.14)
-  torsoGroup.add(buckle)
-
-  if (role === 'sheriff') {
-    const holster = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.20, 0.10), brownLeatherM)
-    holster.position.set(0.22, -0.24, 0.04)
-    holster.rotation.z = -0.15
-    torsoGroup.add(holster)
-    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 0.05), brownLeatherM)
-    grip.position.set(0.23, -0.13, 0.06)
-    grip.rotation.x = -0.3
-    torsoGroup.add(grip)
-  } else if (role === 'pete') {
-    const flask = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.10, 0.04), silverM)
-    flask.position.set(0.21, -0.20, 0.05)
-    flask.rotation.z = -0.2
-    torsoGroup.add(flask)
-  } else if (role === 'luke') {
-    const pouch = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.06), brownLeatherM)
-    pouch.position.set(-0.21, -0.20, 0.04)
-    torsoGroup.add(pouch)
+  if (role === 'luke') {
+    const bib = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.28, 0.02), mat(0x563820, { map: leatherTex }))
+    bib.position.set(0, 0.28, 0.134)
+    torsoGroup.add(bib)
+    const apronSkirt = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.42, 0.02), mat(0x563820, { map: leatherTex }))
+    apronSkirt.position.set(0, -0.16, 0.145)
+    torsoGroup.add(apronSkirt)
   }
 
   if (role === 'martha' || role === 'greta') {
-    const skirtM = role === 'martha' ? coatM : mat(coat, { roughness: 0.88 })
-    const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.40, 0.68, 12), skirtM)
-    skirt.position.y = -0.50
+    const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.35, 0.70, 10), coatM)
+    skirt.position.set(0, -0.35, 0)
     skirt.castShadow = true
     torsoGroup.add(skirt)
-
-    const apronM = mat(0xdad5c8, { roughness: 0.9 })
-    const apron = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.50, 0.02), apronM)
-    apron.position.set(0, -0.44, 0.22)
-    torsoGroup.add(apron)
-
-    for (const side of [-1, 1]) {
-      const bootToe = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.10), blackLeatherM)
-      bootToe.position.set(side * 0.10, -0.87, 0.18)
-      torsoGroup.add(bootToe)
-    }
   } else {
-    const skirtGroup = new THREE.Group()
-    skirtGroup.position.y = -0.18
-    torsoGroup.add(skirtGroup)
-
-    const flapL = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.36, 0.24), coatM)
-    flapL.position.set(-0.20, -0.16, 0)
-    flapL.rotation.z = -0.08
-    flapL.castShadow = true
-    skirtGroup.add(flapL)
-
-    const flapR = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.36, 0.24), coatM)
-    flapR.position.set(0.20, -0.16, 0)
-    flapR.rotation.z = 0.08
-    flapR.castShadow = true
-    skirtGroup.add(flapR)
-
-    for (const side of [-1, 1]) {
-      const flapBack = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.36, 0.03), coatM)
-      flapBack.position.set(side * 0.10, -0.16, -0.13)
-      flapBack.rotation.x = -0.06
-      flapBack.castShadow = true
-      skirtGroup.add(flapBack)
-    }
+    const coatSkirt = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.26, 0.27), coatM)
+    coatSkirt.position.set(0, -0.12, 0)
+    coatSkirt.castShadow = true
+    torsoGroup.add(coatSkirt)
   }
 
   const leftLeg = new THREE.Group()
-  leftLeg.position.set(-0.12, -0.18, 0)
-  torsoGroup.add(leftLeg)
+  leftLeg.position.set(-0.11, baseTorsoY, 0)
+  g.add(leftLeg)
   g.userData.leftLeg = leftLeg
 
+  const lThigh = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.38, 0.17), pantM)
+  lThigh.position.y = -0.19
+  lThigh.castShadow = true
+  leftLeg.add(lThigh)
+
+  const lKnee = new THREE.Mesh(new THREE.SphereGeometry(0.068, 6, 6), pantM)
+  lKnee.position.y = -0.38
+  leftLeg.add(lKnee)
+
+  const bootM = role === 'player' ? blackLeatherM : (role === 'luke' || role === 'pete' ? brownLeatherM : blackLeatherM)
+  const lBoot = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.34, 0.16), bootM)
+  lBoot.position.set(0, -0.54, 0.01)
+  lBoot.castShadow = true
+  leftLeg.add(lBoot)
+  const lBootCuff = new THREE.Mesh(new THREE.BoxGeometry(0.148, 0.05, 0.168), bootM)
+  lBootCuff.position.set(0, -0.40, 0.01)
+  leftLeg.add(lBootCuff)
+  const lToe = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.10, 0.22), bootM)
+  lToe.position.set(0, -0.765, 0.04)
+  leftLeg.add(lToe)
+
   const rightLeg = new THREE.Group()
-  rightLeg.position.set(0.12, -0.18, 0)
-  torsoGroup.add(rightLeg)
+  rightLeg.position.set(0.11, baseTorsoY, 0)
+  g.add(rightLeg)
   g.userData.rightLeg = rightLeg
 
-  for (const leg of [leftLeg, rightLeg]) {
-    const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.32, 0.14), pantM)
-    thigh.position.y = -0.16
-    thigh.castShadow = true
-    leg.add(thigh)
+  const rThigh = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.38, 0.17), pantM)
+  rThigh.position.y = -0.19
+  rThigh.castShadow = true
+  rightLeg.add(rThigh)
 
-    const calf = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.22, 0.125), pantM)
-    calf.position.y = -0.38
-    calf.castShadow = true
-    leg.add(calf)
+  const rKnee = new THREE.Mesh(new THREE.SphereGeometry(0.068, 6, 6), pantM)
+  rKnee.position.y = -0.38
+  rightLeg.add(rKnee)
 
-    const bootShaft = new THREE.Mesh(new THREE.BoxGeometry(0.125, 0.18, 0.135), blackLeatherM)
-    bootShaft.position.y = -0.52
-    bootShaft.castShadow = true
-    leg.add(bootShaft)
+  const rBoot = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.34, 0.16), bootM)
+  rBoot.position.set(0, -0.54, 0.01)
+  rBoot.castShadow = true
+  rightLeg.add(rBoot)
+  const rBootCuff = new THREE.Mesh(new THREE.BoxGeometry(0.148, 0.05, 0.168), bootM)
+  rBootCuff.position.set(0, -0.40, 0.01)
+  rightLeg.add(rBootCuff)
+  const rToe = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.10, 0.22), bootM)
+  rToe.position.set(0, -0.765, 0.04)
+  rightLeg.add(rToe)
 
-    const bootFoot = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.085, 0.22), blackLeatherM)
-    bootFoot.position.set(0, -0.66, 0.05)
-    bootFoot.castShadow = true
-    leg.add(bootFoot)
-
-    const bootSole = new THREE.Mesh(new THREE.BoxGeometry(0.126, 0.03, 0.23), mat(0x0e0e10, { roughness: 0.9 }))
-    bootSole.position.set(0, -0.705, 0.05)
-    leg.add(bootSole)
-  }
-
-  const armMat = role === 'luke' ? mat(0xdedad2, { roughness: 0.85 }) : coatM
+  const armMat = role === 'luke' ? shirtM : coatM
 
   const leftArm = new THREE.Group()
-  leftArm.position.set(-0.27, 0.36, 0)
+  leftArm.position.set(-0.26, 0.44, 0)
   torsoGroup.add(leftArm)
   g.userData.leftArm = leftArm
 
-  const lShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), coatM)
+  const lShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 8), coatM)
   leftArm.add(lShoulder)
 
-  const lBicep = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.065, 0.24, 8), armMat)
-  lBicep.position.set(0, -0.13, 0)
+  const lBicep = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.058, 0.24, 8), armMat)
+  lBicep.position.set(0, -0.12, 0)
   lBicep.castShadow = true
   leftArm.add(lBicep)
 
-  const lForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.055, 0.22, 8), role === 'luke' ? skinM : armMat)
-  lForearm.position.set(0, -0.34, 0.03)
-  lForearm.rotation.x = 0.14
+  const lForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.050, 0.22, 8), role === 'luke' ? skinM : armMat)
+  lForearm.position.set(0, -0.32, 0.02)
+  lForearm.rotation.x = 0.08
   lForearm.castShadow = true
   leftArm.add(lForearm)
 
-  const lHand = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.09, 0.06), role === 'player' ? blackLeatherM : skinM)
-  lHand.position.set(0, -0.48, 0.05)
+  const lCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.04, 8), role === 'luke' ? mat(0x503822) : coatM)
+  lCuff.position.set(0, -0.40, 0.02)
+  leftArm.add(lCuff)
+
+  const lHand = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.08, 0.05), role === 'player' ? blackLeatherM : skinM)
+  lHand.position.set(0, -0.45, 0.03)
   leftArm.add(lHand)
 
   const rightArm = new THREE.Group()
-  rightArm.position.set(0.27, 0.36, 0)
+  rightArm.position.set(0.26, 0.44, 0)
   torsoGroup.add(rightArm)
   g.userData.rightArm = rightArm
 
-  const rShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), coatM)
+  const rShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 8), coatM)
   rightArm.add(rShoulder)
 
-  const rBicep = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.065, 0.24, 8), armMat)
-  rBicep.position.set(0, -0.13, 0)
+  const rBicep = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.058, 0.24, 8), armMat)
+  rBicep.position.set(0, -0.12, 0)
   rBicep.castShadow = true
   rightArm.add(rBicep)
 
-  const rForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.055, 0.22, 8), role === 'luke' ? skinM : armMat)
-  rForearm.position.set(0, -0.34, 0.03)
-  rForearm.rotation.x = 0.14
+  const rForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.050, 0.22, 8), role === 'luke' ? skinM : armMat)
+  rForearm.position.set(0, -0.32, 0.02)
+  rForearm.rotation.x = 0.08
   rForearm.castShadow = true
   rightArm.add(rForearm)
 
-  const rHand = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.09, 0.06), role === 'player' ? blackLeatherM : skinM)
-  rHand.position.set(0, -0.48, 0.05)
+  const rCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.04, 8), role === 'luke' ? mat(0x503822) : coatM)
+  rCuff.position.set(0, -0.40, 0.02)
+  rightArm.add(rCuff)
+
+  const rHand = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.08, 0.05), role === 'player' ? blackLeatherM : skinM)
+  rHand.position.set(0, -0.45, 0.03)
   rightArm.add(rHand)
 
   if (role === 'coroner') {
     const bag = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.20, 0.28), blackLeatherM)
-    bag.position.set(0, -0.62, 0.06)
+    bag.position.set(0, -0.58, 0.05)
     bag.castShadow = true
     leftArm.add(bag)
     const bagHandle = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 4, 8, Math.PI), goldM)
-    bagHandle.position.set(0, -0.50, 0.06)
+    bagHandle.position.set(0, -0.48, 0.05)
     bagHandle.rotation.z = Math.PI
     leftArm.add(bagHandle)
   }
 
   if (role === 'barrow') {
-    const cane = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.012, 0.46, 8), blackLeatherM)
-    cane.position.set(0.04, -0.68, 0.08)
+    const cane = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.012, 0.72, 8), blackLeatherM)
+    cane.position.set(0.03, -0.44, 0.08)
     cane.castShadow = true
     rightArm.add(cane)
-    const caneHead = new THREE.Mesh(new THREE.SphereGeometry(0.038, 10, 8), goldM)
-    caneHead.position.set(0.04, -0.45, 0.08)
+    const caneHead = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), goldM)
+    caneHead.position.set(0.03, -0.08, 0.08)
     rightArm.add(caneHead)
   }
 
   if (role === 'greta') {
     const basket = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.14, 0.22), mat(0x8a623c, { roughness: 0.9 }))
-    basket.position.set(0, -0.40, 0.10)
+    basket.position.set(0, -0.38, 0.10)
     basket.castShadow = true
     leftArm.add(basket)
   }
 
-  const sh = new THREE.Mesh(new THREE.CircleGeometry(.46, 16), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: .36 }))
+  const sh = new THREE.Mesh(new THREE.CircleGeometry(.44, 16),
+    new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: .34, depthWrite: false }))
   sh.rotation.x = -Math.PI / 2
-  sh.position.y = .02
+  sh.position.y = .028
   g.add(sh)
 
   g.userData.bob = Math.random() * 6
@@ -2240,30 +1450,37 @@ export function makeChar(coat, hatC, opts) {
 export const player = makeChar(0x2e333d, 0x1e222a, { scarf: 0xd9a441, role: 'player' })
 player.position.set(0, 0, 10)
 
-export const NPCS = {
-  sheriff: { n: '警长 雷诺', pos: [-2.5, 5.2], coat: 0x2e4a6e, hat: 0x1e2c40, badge: true },
-  coroner: { n: '验尸官 贝尔', pos: [-17.8, -13.4], coat: 0x565e66, hat: 0x3c434b },
-  martha: { n: '玛莎 · 贝克', pos: [-20.5, 11.6], coat: 0x3e3549, hat: false, hair: 0x241d18 },
-  luke: { n: '学徒 卢克', pos: [-22.0, -12.4], coat: 0x6e5638, hat: 0x4e3c26 },
-  pete: { n: '醉汉 皮特', pos: [13.8, -10.4], coat: 0x4a5a3a, hat: 0x39462c },
-  barrow: { n: '债主 巴罗', pos: [19.2, 12.0], coat: 0x5e2e3a, hat: 0x3c1e26 },
-  greta: { n: '街坊 格蕾塔', pos: [3.2, -2.8], coat: 0x8a5e38, hat: 0x6e4a2c },
-}
+export const NPCS = new Proxy({}, {
+  get(target, prop) {
+    const cur = getCurrentCase()
+    if (cur && cur.map && cur.map.NPCS) {
+      return cur.map.NPCS[prop]
+    }
+    return target[prop]
+  },
+  ownKeys() {
+    const cur = getCurrentCase()
+    if (cur && cur.map && cur.map.NPCS) {
+      return Reflect.ownKeys(cur.map.NPCS)
+    }
+    return []
+  },
+  getOwnPropertyDescriptor(target, prop) {
+    const cur = getCurrentCase()
+    if (cur && cur.map && cur.map.NPCS && prop in cur.map.NPCS) {
+      return { enumerable: true, configurable: true, value: cur.map.NPCS[prop] }
+    }
+    return undefined
+  },
+  has(target, prop) {
+    const cur = getCurrentCase()
+    if (cur && cur.map && cur.map.NPCS) {
+      return prop in cur.map.NPCS
+    }
+    return prop in target
+  },
+})
 
-for (const k in NPCS) {
-  const d = NPCS[k]
-  d.mesh = makeChar(d.coat, d.hat, { hat: d.hat !== false, hair: d.hair, badge: d.badge, role: k })
-  d.mesh.position.set(d.pos[0], 0, d.pos[1])
-  const ring = new THREE.Mesh(new THREE.RingGeometry(.5, .62, 28),
-    new THREE.MeshBasicMaterial({ color: 0xd9a441, transparent: true, opacity: 0, side: THREE.DoubleSide }))
-  ring.rotation.x = -Math.PI / 2
-  ring.position.y = .04
-  d.mesh.add(ring)
-  d.ring = ring
-  tagInteractive(d.mesh, k, d.n, 'npc')
-}
-
-/* 标签层 */
 export const labels = []
 
 export function addLabel(getPos, html, cls, cond) {
@@ -2275,16 +1492,6 @@ export function addLabel(getPos, html, cls, cond) {
   return el
 }
 
-for (const k in NPCS) {
-  const d = NPCS[k]
-  addLabel(
-    () => d.mesh.position.clone().add(new THREE.Vector3(0, 2.15, 0)),
-    `<span class="dot" style="background:#d9a441"></span>${d.n}`,
-    '',
-    () => dist2(player.position.x, player.position.z, d.pos[0], d.pos[1]) < 16,
-  )
-}
-
 export const scanLabels = {}
 
 export function ensureScanLabel(id) {
@@ -2292,10 +1499,15 @@ export function ensureScanLabel(id) {
     return scanLabels[id]
   }
   const it = ITAB[id]
-  const col = it.kind === 'npc' ? '#d9a441' : it.kind === 'clue' ? '#e05a5a' : it.kind === 'item' ? '#7fd0c4' : '#9aa4b4'
+  if (!it) {
+    return null
+  }
+  const col = it.kind === 'npc' ? '#d9a441' : it.kind === 'clue' ? '#e05a5a' : it.kind === 'item'
+    ? '#7fd0c4'
+    : '#9aa4b4'
   const el = addLabel(
     () => it.mesh.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, it.kind === 'npc' ? 0 : 1.1, 0)),
-    `<span class="dot" style="background:${col}"></span>${it.name}`,
+    `<span class="dot" style="background:${ col }"></span>${ it.name }`,
     'scan',
     () => false,
   )
@@ -2304,31 +1516,42 @@ export function ensureScanLabel(id) {
   return el
 }
 
-export function applyWorldFromFlags() {
-  if (hasFlag('clue_hammer')) {
-    ITAB.hammer.hidden = true
-    hammerM.visible = false
-    hamRing.visible = false
-  }
-  if (hasFlag('gateOpen')) {
-    scene.remove(gateMesh)
-  }
-  ['clue_letter'].forEach(() => {})
-  if (G.clues.includes('clue_letter')) {
-    ITAB.letter.hidden = true
-    letterM.visible = false
-  }
-  if (G.clues.includes('clue_apron')) {
-    ITAB.barrels.hidden = true
-    apronM.visible = true
-  }
-  if (!G.clues.includes('clue_apron')) {
-    apronM.visible = false
-  }
-  if (G.inventory.includes('wallet') || hasFlag('walletReturned')) {
-    if (ITAB.wallet) {
-      ITAB.wallet.hidden = true
+export function clearWorldObjects() {
+  labels.forEach(l => {
+    if (l.el && l.el.parentNode) {
+      l.el.parentNode.removeChild(l.el)
     }
-    walletM.visible = false
+  })
+  labels.length = 0
+  for (const k in scanLabels) {
+    delete scanLabels[k]
+  }
+  for (const k in ITAB) {
+    delete ITAB[k]
+  }
+  interactMeshes.length = 0
+  lampPositions.length = 0
+  resetGrid()
+}
+
+export function zoneAt(x, z) {
+  const cur = getCurrentCase()
+  if (cur && cur.map && cur.map.zoneAt) {
+    return cur.map.zoneAt(x, z)
+  }
+  return null
+}
+
+export function applyWorldFromFlags() {
+  const cur = getCurrentCase()
+  if (cur && cur.map && cur.map.applyWorldFromFlags) {
+    cur.map.applyWorldFromFlags(G)
+  }
+}
+
+export function openGate() {
+  const cur = getCurrentCase()
+  if (cur && cur.map && cur.map.openGate) {
+    cur.map.openGate(G, setFlag)
   }
 }

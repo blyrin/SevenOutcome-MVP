@@ -51,7 +51,7 @@ export const DIALOGUE_LINES = {
     speaker: '警长 雷诺',
     voice: '白桦',
     prompt: '中年警长，低沉叮嘱，鼓励深挖。',
-    text: (count = '') => `已有${count}条物证收录在案了。继续深挖，侦探——真相就藏在最微小的细节深处。`,
+    text: (count = '') => `已有${ count }条物证收录在案了。继续深挖，侦探——真相就藏在最微小的细节深处。`,
     tts: '物证已经陆续收录在案了。继续深挖，侦探，真相就藏在最微小的细节深处。',
   },
   sheriff_hub_verdict: {
@@ -420,7 +420,7 @@ export function line(id, ...params) {
     sp: item.speaker,
     tx,
     lineId: item.id,
-    voiceUrl: `/voice/${item.id}.mp3`,
+    voiceUrl: `${ import.meta.env.BASE_URL }cases/blacksmith/audio/voice/${ item.id }.mp3`,
   }
 }
 
@@ -431,7 +431,7 @@ export function findVoiceUrl(text) {
   for (const item of Object.values(DIALOGUE_LINES)) {
     const raw = typeof item.text === 'function' ? item.text() : item.text
     if (text === raw || (raw && text.includes(raw.slice(0, 14)))) {
-      return `/voice/${item.id}.mp3`
+      return `${ import.meta.env.BASE_URL }cases/blacksmith/audio/voice/${ item.id }.mp3`
     }
   }
   return null
