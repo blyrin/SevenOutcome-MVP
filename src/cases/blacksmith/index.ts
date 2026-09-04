@@ -1,11 +1,12 @@
-import { CLUE_TOTAL, CLUES, itemMesh, ITEMS, questState } from './clues.js'
-import { DIALOGUE_LINES, findVoiceUrl, line } from './dialogueLines.js'
-import { DLG, NPC_PROFILES } from './dialogueData.js'
-import { CORRECT, getDeduceText, SLOTS, WRONGMSG } from './board.js'
-import { getEpilogueData, getVerdictCards, TIMELINE } from './trial.js'
-import * as map from './map.js'
+import { CLUE_TOTAL, CLUES, itemMesh, ITEMS, questState } from './clues'
+import { DIALOGUE_LINES, findVoiceUrl, line } from './dialogueLines'
+import { DLG, NPC_PROFILES } from './dialogueData'
+import { CORRECT, getDeduceText, SLOTS, WRONGMSG } from './board'
+import { getEpilogueData, getVerdictCards, TIMELINE } from './trial'
+import * as map from './map'
+import type { CaseDefinition } from '../../types'
 
-export const caseBlacksmith = {
+export const caseBlacksmith: CaseDefinition = {
   id: 'blacksmith',
   title: '铁匠之死',
   subtitle: '雾杉镇疑案',

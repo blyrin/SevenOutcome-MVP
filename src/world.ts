@@ -5,9 +5,10 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js'
 import { VignetteShader } from 'three/examples/jsm/shaders/VignetteShader.js'
-import { $, clamp, rand } from './utils.js'
-import { G, setFlag } from './state.js'
-import { getCurrentCase } from './cases/caseManager.js'
+import { $, clamp, rand } from './utils'
+import { G, setFlag } from './state'
+import { getCurrentCase } from './cases/caseManager'
+import type { ColorLike, InteractiveItem, InteractKind, NpcEntity, SolidHouseOptions, WorldLabel } from './types'
 
 export const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
 renderer.setSize(innerWidth, innerHeight)
@@ -45,7 +46,10 @@ composer.addPass(vignettePass)
 
 const fxaaPass = new ShaderPass(FXAAShader)
 const pr = renderer.getPixelRatio()
-fxaaPass.material.uniforms.resolution.value.set(1 / (innerWidth * pr), 1 / (innerHeight * pr))
+const fxaaUniforms = (fxaaPass.material as THREE.ShaderMaterial).uniforms
+if (fxaaUniforms && fxaaUniforms.resolution) {
+  fxaaUniforms.resolution.value.set(1 / (innerWidth * pr), 1 / (innerHeight * pr))
+}
 composer.addPass(fxaaPass)
 
 addEventListener('resize', () => {
@@ -55,7 +59,10 @@ addEventListener('resize', () => {
   renderer.setSize(w, h)
   composer.setSize(w, h)
   const ratio = renderer.getPixelRatio()
-  fxaaPass.material.uniforms.resolution.value.set(1 / (w * ratio), 1 / (h * ratio))
+  const u = (fxaaPass.material as THREE.ShaderMaterial).uniforms
+  if (u && u.resolution) {
+    u.resolution.value.set(1 / (w * ratio), 1 / (h * ratio))
+  }
 })
 
 scene.add(new THREE.HemisphereLight(0x384d72, 0x161310, .54))
@@ -79,25 +86,31 @@ const rim = new THREE.DirectionalLight(0x3e5276, 0.32)
 rim.position.set(26, 18, -22)
 scene.add(rim)
 
-export function canvasTex(w, h, fn) {
+export function canvasTex(
+  w: number, h: number, fn: (ctx: CanvasRenderingContext2D, w: number, h: number) => void): THREE.CanvasTexture {
   const c = document.createElement('canvas')
   c.width = w
   c.height = h
-  fn(c.getContext('2d'), w, h)
+  const ctx = c.getContext('2d')
+  if (ctx) {
+    fn(ctx, w, h)
+  }
   const t = new THREE.CanvasTexture(c)
   t.wrapS = t.wrapT = THREE.RepeatWrapping
   return t
 }
 
 ;(() => {
-  const g = new THREE.BufferGeometry(), p = []
+  const g = new THREE.BufferGeometry(), p: number[] = []
   for (let i = 0; i < 420; i++) {
     const r = rand(60, 95), t = rand(0, Math.PI * 2), e = rand(.12, 1.35)
     p.push(Math.cos(t) * r * Math.cos(e), Math.sin(e) * r, Math.sin(t) * r * Math.cos(e))
   }
   g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3))
-  scene.add(
-    new THREE.Points(g, new THREE.PointsMaterial({ color: 0xc4d6ee, size: .38, transparent: true, opacity: .88 })))
+  const starPoints = new THREE.Points(g,
+    new THREE.PointsMaterial({ color: 0xc4d6ee, size: .38, transparent: true, opacity: .88 }))
+  starPoints.userData.isCoreWorld = true
+  scene.add(starPoints)
   const mt = canvasTex(128, 128, (x) => {
     const gr = x.createRadialGradient(64, 64, 6, 64, 64, 64)
     gr.addColorStop(0, '#fffbe6')
@@ -111,20 +124,23 @@ export function canvasTex(w, h, fn) {
   const ms = new THREE.Sprite(new THREE.SpriteMaterial({ map: mt, transparent: true, fog: false }))
   ms.scale.set(16, 16, 1)
   ms.position.set(-46, 42, -52)
+  ms.userData.isCoreWorld = true
   scene.add(ms)
 })()
 
 export const GW = 81, GH = 57
 export const blocked = new Uint8Array(GW * GH)
-export const toG = (x, z) => [clamp(Math.round(x) + 40, 0, GW - 1), clamp(Math.round(z) + 28, 0, GH - 1)]
-export const fromG = (gx, gy) => [gx - 40, gy - 28]
 
-export function resetGrid() {
+export const toG = (x: number, z: number): [number, number] => [
+  clamp(Math.round(x) + 40, 0, GW - 1),
+  clamp(Math.round(z) + 28, 0, GH - 1)]
+export const fromG = (gx: number, gy: number): [number, number] => [gx - 40, gy - 28]
+
+export function resetGrid(): void {
   blocked.fill(0)
 }
 
-export function blockRect(x1, z1, x2, z2, pad) {
-  pad = pad === undefined ? 0 : pad
+export function blockRect(x1: number, z1: number, x2: number, z2: number, pad = 0): void {
   const eps = 0.05
   const minGx = Math.max(0, Math.ceil(x1 - pad - 0.5 + eps) + 40)
   const maxGx = Math.min(GW - 1, Math.floor(x2 + pad + 0.5 - eps) + 40)
@@ -137,14 +153,14 @@ export function blockRect(x1, z1, x2, z2, pad) {
   }
 }
 
-export function isBlocked(gx, gy) {
+export function isBlocked(gx: number, gy: number): boolean {
   if (gx < 0 || gx >= GW || gy < 0 || gy >= GH) {
     return true
   }
   return blocked[gy * GW + gx] === 1
 }
 
-export function nearestFree(gx, gy) {
+export function nearestFree(gx: number, gy: number): [number, number] {
   if (!isBlocked(gx, gy)) {
     return [gx, gy]
   }
@@ -163,7 +179,7 @@ export function nearestFree(gx, gy) {
   return [gx, gy]
 }
 
-export function findPath(sx, sz, tx, tz) {
+export function findPath(sx: number, sz: number, tx: number, tz: number): Array<[number, number]> {
   const start = toG(sx, sz)
   let target = toG(tx, tz)
   if (isBlocked(target[0], target[1])) {
@@ -186,10 +202,10 @@ export function findPath(sx, sz, tx, tz) {
   const fScore = new Float32Array(GW * GH).fill(1e9)
 
   gScore[startIdx] = 0
-  const h = (gx, gy) => Math.hypot(gx - target[0], gy - target[1])
+  const h = (gx: number, gy: number): number => Math.hypot(gx - target[0], gy - target[1])
   fScore[startIdx] = h(start[0], start[1])
 
-  const dirs = [
+  const dirs: Array<[number, number, number]> = [
     [1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1],
     [1, 1, 1.414], [-1, 1, 1.414], [1, -1, 1.414], [-1, -1, 1.414],
   ]
@@ -210,7 +226,7 @@ export function findPath(sx, sz, tx, tz) {
     closed[current] = 1
 
     if (current === targetIdx) {
-      const path = []
+      const path: Array<[number, number]> = []
       let curr = current
       while (curr !== -1) {
         const cx = curr % GW
@@ -368,7 +384,11 @@ export const roofTileTex = canvasTex(256, 256, (x, w, h) => {
       const v = 38 + Math.floor(rand(-6, 8))
       x.fillStyle = `rgb(${ v + 6 }, ${ v }, ${ v - 2 })`
       x.beginPath()
-      x.roundRect ? x.roundRect(bx + 1, by + 1, cw - 2, rh - 1, [0, 0, 3, 3]) : x.rect(bx + 1, by + 1, cw - 2, rh - 1)
+      if (typeof x.roundRect === 'function') {
+        x.roundRect(bx + 1, by + 1, cw - 2, rh - 1, [0, 0, 3, 3])
+      } else {
+        x.rect(bx + 1, by + 1, cw - 2, rh - 1)
+      }
       x.fill()
       x.fillStyle = 'rgba(0, 0, 0, 0.45)'
       x.fillRect(bx + 1, by + rh - 1, cw - 2, 1)
@@ -376,7 +396,9 @@ export const roofTileTex = canvasTex(256, 256, (x, w, h) => {
   }
 })
 
-export function mat(c, e) {
+export type { ColorLike }
+
+export function mat(c: ColorLike, e?: THREE.MeshStandardMaterialParameters): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial(Object.assign({
     color: c,
     roughness: 0.82,
@@ -384,10 +406,11 @@ export function mat(c, e) {
   }, e || {}))
 }
 
-export function box(w, h, d, c, x, y, z, shadow) {
+export function box(
+  w: number, h: number, d: number, c: ColorLike, x: number, y: number, z: number, shadow = true): THREE.Mesh {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c))
   m.position.set(x, y, z)
-  if (shadow !== false) {
+  if (shadow) {
     m.castShadow = true
     m.receiveShadow = true
   }
@@ -395,11 +418,11 @@ export function box(w, h, d, c, x, y, z, shadow) {
   return m
 }
 
-export function wallRects(list) {
+export function wallRects(list: Array<[number, number, number, number]>): void {
   list.forEach(r => blockRect(r[0], r[1], r[2], r[3], 0))
 }
 
-export function quoinCorner(x, z, h, c) {
+export function quoinCorner(x: number, z: number, h: number, c: ColorLike): void {
   const count = Math.floor(h / 0.45)
   for (let i = 0; i < count; i++) {
     const s = (i % 2 === 0) ? 0.38 : 0.26
@@ -410,10 +433,19 @@ export function quoinCorner(x, z, h, c) {
   }
 }
 
-export function buildingShell(x1, z1, x2, z2, h, color, door) {
-  const t = .45, wr = []
+export interface BuildingDoor {
+  side?: 'N' | 'S' | 'W' | 'E'
+  a: number
+  b: number
+}
+
+export function buildingShell(
+  x1: number, z1: number, x2: number, z2: number, h: number,
+  color: ColorLike, door?: BuildingDoor,
+): Array<[number, number, number, number]> {
+  const t = .45, wr: Array<[number, number, number, number]> = []
   const wallM = mat(color, { map: wallPlasterTex, roughness: 0.88, metalness: 0.05 })
-  const seg = (wx1, wz1, wx2, wz2) => {
+  const seg = (wx1: number, wz1: number, wx2: number, wz2: number): void => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(wx2 - wx1, h, wz2 - wz1), wallM)
     m.position.set((wx1 + wx2) / 2, h / 2, (wz1 + wz2) / 2)
     m.castShadow = true
@@ -421,7 +453,7 @@ export function buildingShell(x1, z1, x2, z2, h, color, door) {
     scene.add(m)
     wr.push([wx1, wz1, wx2, wz2])
   }
-  const d = door || {}
+  const d = door || ({} as BuildingDoor)
   if (d.side === 'N') {
     seg(x1, z1, d.a, z1 + t)
     seg(d.b, z1, x2, z1 + t)
@@ -505,7 +537,11 @@ export const windowMat = new THREE.MeshStandardMaterial({
   roughness: 0.28,
 })
 
-export function solidHouse(x, z, w, d, h, c, rc) {
+export function solidHouse(
+  x: number, z: number, w: number, d: number, h: number,
+  c: ColorLike, rc: ColorLike,
+  _opts?: SolidHouseOptions,
+): void {
   const houseGroup = new THREE.Group()
   const bMat = mat(c, { map: wallPlasterTex, roughness: 0.88, metalness: 0.06 })
   const base = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), bMat)
@@ -566,9 +602,9 @@ export const lampGlowTex = canvasTex(128, 128, (x, w, h) => {
   x.fillRect(0, 0, w, h)
 })
 
-export const lampPositions = []
+export const lampPositions: Array<[number, number]> = []
 
-export function lamp(x, z) {
+export function lamp(x: number, z: number): void {
   lampPositions.push([x, z])
   const g = new THREE.Group()
 
@@ -651,8 +687,7 @@ export function lamp(x, z) {
   blockRect(x - .3, z - .3, x + .3, z + .3, 0)
 }
 
-export function barrel(x, z, s) {
-  s = s || 1
+export function barrel(x: number, z: number, s = 1): void {
   const bg = new THREE.Group()
   const bMat = mat(0x523d2b, { map: woodTex, roughness: 0.85, metalness: 0.08 })
   const hoopMat = mat(0x22262d, { roughness: 0.5, metalness: 0.75 })
@@ -705,8 +740,7 @@ export function barrel(x, z, s) {
   blockRect(x - .45 * s, z - .45 * s, x + .45 * s, z + .45 * s, 0)
 }
 
-export function crate(x, z, s) {
-  s = s || 1
+export function crate(x: number, z: number, s = 1): void {
   const cg = new THREE.Group()
   const cMat = mat(0x4a3a2a, { map: woodTex, roughness: 0.86, metalness: 0.05 })
   const frameMat = mat(0x36281b, { roughness: 0.88 })
@@ -753,8 +787,7 @@ export function crate(x, z, s) {
   blockRect(x - .4 * s, z - .4 * s, x + .4 * s, z + .4 * s, 0)
 }
 
-export function tree(x, z, s) {
-  s = s || 1
+export function tree(x: number, z: number, s = 1): void {
   const tg = new THREE.Group()
 
   const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.13 * s, .23 * s, 1.7 * s, 7),
@@ -790,7 +823,7 @@ export function tree(x, z, s) {
   blockRect(x - .35 * s, z - .35 * s, x + .35 * s, z + .35 * s, 0)
 }
 
-export function table(x, z) {
+export function table(x: number, z: number): void {
   const tg = new THREE.Group()
   const tMat = mat(0x483827, { map: woodTex, roughness: 0.82 })
   const legMat = mat(0x322619, { roughness: 0.9 })
@@ -805,7 +838,7 @@ export function table(x, z) {
   bevel.position.y = .75
   tg.add(bevel)
 
-  const legCoords = [[-.62, -.32], [.62, -.32], [-.62, .32], [.62, .32]]
+  const legCoords: Array<[number, number]> = [[-.62, -.32], [.62, -.32], [-.62, .32], [.62, .32]]
   legCoords.forEach(([lx, lz]) => {
     const leg = new THREE.Mesh(new THREE.BoxGeometry(.11, .78, .11), legMat)
     leg.position.set(lx, .39, lz)
@@ -818,7 +851,7 @@ export function table(x, z) {
   blockRect(x - .78, z - .48, x + .78, z + .48, 0)
 }
 
-export function stool(x, z) {
+export function stool(x: number, z: number): void {
   const sg = new THREE.Group()
   const sMat = mat(0x3a2c1f, { map: woodTex, roughness: 0.85 })
   const seat = new THREE.Mesh(new THREE.CylinderGeometry(.27, .27, .07, 10), sMat)
@@ -838,16 +871,17 @@ export function stool(x, z) {
   scene.add(sg)
 }
 
-export const interactMeshes = []
-export const ITAB = {}
+export const interactMeshes: THREE.Object3D[] = []
+export const ITAB: Record<string, InteractiveItem> = {}
 
-export function tagInteractive(mesh, id, name, kind) {
+export function tagInteractive(mesh: THREE.Object3D, id: string, name: string, kind: InteractKind = 'prop'): void {
   mesh.userData.iid = id
   interactMeshes.push(mesh)
-  ITAB[id] = ITAB[id] || {}
+  ITAB[id] = ITAB[id] || ({} as InteractiveItem)
   ITAB[id].name = name
   ITAB[id].kind = kind
   ITAB[id].mesh = mesh
+  ITAB[id].id = id
 }
 
 const bloodTex = canvasTex(256, 256, (x, w, h) => {
@@ -921,7 +955,7 @@ const chalkTex = canvasTex(512, 512, (x, w, h) => {
   }
 })
 
-export function chalkOutline(x, z, y = 0.128) {
+export function chalkOutline(x: number, z: number, y = 0.128): THREE.Mesh {
   const blood = new THREE.Mesh(
     new THREE.PlaneGeometry(2.6, 2.0),
     new THREE.MeshStandardMaterial({
@@ -951,10 +985,14 @@ export function chalkOutline(x, z, y = 0.128) {
 
   tagInteractive(chalkMesh, 'body', '死者遗体痕迹', 'clue')
   tagInteractive(blood, 'body', '死者遗体痕迹', 'clue')
+  return chalkMesh
 }
 
-export function makeChar(coat, hatC, opts) {
-  opts = opts || {}
+export function makeChar(
+  coat: ColorLike,
+  hatC?: ColorLike | false,
+  opts: { hair?: ColorLike; role?: string; hat?: boolean; badge?: boolean; scarf?: ColorLike } = {},
+): THREE.Group {
   const role = opts.role || 'detective'
   const g = new THREE.Group()
 
@@ -1373,7 +1411,8 @@ export function makeChar(coat, hatC, opts) {
   lForearm.castShadow = true
   leftArm.add(lForearm)
 
-  const lCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.04, 8), role === 'luke' ? mat(0x503822) : coatM)
+  const lCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.04, 8),
+    role === 'luke' ? mat(0x503822) : coatM)
   lCuff.position.set(0, -0.40, 0.02)
   leftArm.add(lCuff)
 
@@ -1400,7 +1439,8 @@ export function makeChar(coat, hatC, opts) {
   rForearm.castShadow = true
   rightArm.add(rForearm)
 
-  const rCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.04, 8), role === 'luke' ? mat(0x503822) : coatM)
+  const rCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.04, 8),
+    role === 'luke' ? mat(0x503822) : coatM)
   rCuff.position.set(0, -0.40, 0.02)
   rightArm.add(rCuff)
 
@@ -1450,11 +1490,11 @@ export function makeChar(coat, hatC, opts) {
 export const player = makeChar(0x2e333d, 0x1e222a, { scarf: 0xd9a441, role: 'player' })
 player.position.set(0, 0, 10)
 
-export const NPCS = new Proxy({}, {
-  get(target, prop) {
+export const NPCS: Record<string, NpcEntity> = new Proxy({} as Record<string, NpcEntity>, {
+  get(target: Record<string, NpcEntity>, prop: string) {
     const cur = getCurrentCase()
     if (cur && cur.map && cur.map.NPCS) {
-      return cur.map.NPCS[prop]
+      return (cur.map.NPCS as Record<string, NpcEntity>)[prop]
     }
     return target[prop]
   },
@@ -1465,14 +1505,14 @@ export const NPCS = new Proxy({}, {
     }
     return []
   },
-  getOwnPropertyDescriptor(target, prop) {
+  getOwnPropertyDescriptor(target: Record<string, NpcEntity>, prop: string) {
     const cur = getCurrentCase()
     if (cur && cur.map && cur.map.NPCS && prop in cur.map.NPCS) {
-      return { enumerable: true, configurable: true, value: cur.map.NPCS[prop] }
+      return { enumerable: true, configurable: true, value: (cur.map.NPCS as Record<string, NpcEntity>)[prop] }
     }
     return undefined
   },
-  has(target, prop) {
+  has(target: Record<string, NpcEntity>, prop: string) {
     const cur = getCurrentCase()
     if (cur && cur.map && cur.map.NPCS) {
       return prop in cur.map.NPCS
@@ -1481,20 +1521,41 @@ export const NPCS = new Proxy({}, {
   },
 })
 
-export const labels = []
+export const labels: WorldLabel[] = []
 
-export function addLabel(getPos, html, cls, cond) {
+export type GetPosFn = () => THREE.Vector3
+
+export function addLabel(
+  target: THREE.Object3D | GetPosFn,
+  html: string,
+  clsOrHeight?: string | number,
+  condOrDesc?: (() => boolean) | string,
+): HTMLElement {
   const el = document.createElement('div')
+  const cls = typeof clsOrHeight === 'string' ? clsOrHeight : ''
   el.className = 'wlabel' + (cls ? ' ' + cls : '')
   el.innerHTML = html
-  $('labels').appendChild(el)
-  labels.push({ el, getPos, cond })
+  const labelsEl = $('labels')
+  if (labelsEl) {
+    labelsEl.appendChild(el)
+  }
+  let getPos: GetPosFn
+  let cond: (() => boolean) | undefined
+  if (typeof target === 'function') {
+    getPos = target
+    cond = typeof condOrDesc === 'function' ? condOrDesc : undefined
+  } else {
+    const yOff = typeof clsOrHeight === 'number' ? clsOrHeight : 1.2
+    getPos = () => target.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, yOff, 0))
+    cond = typeof condOrDesc === 'function' ? condOrDesc : () => true
+  }
+  labels.push({ el, getPos, cls, cond, html })
   return el
 }
 
-export const scanLabels = {}
+export const scanLabels: Record<string, HTMLElement> = {}
 
-export function ensureScanLabel(id) {
+export function ensureScanLabel(id: string): HTMLElement | null {
   if (scanLabels[id]) {
     return scanLabels[id]
   }
@@ -1511,12 +1572,12 @@ export function ensureScanLabel(id) {
     'scan',
     () => false,
   )
-  el.style.opacity = 0
+  el.style.opacity = '0'
   scanLabels[id] = el
   return el
 }
 
-export function clearWorldObjects() {
+export function clearWorldObjects(): void {
   labels.forEach(l => {
     if (l.el && l.el.parentNode) {
       l.el.parentNode.removeChild(l.el)
@@ -1532,24 +1593,35 @@ export function clearWorldObjects() {
   interactMeshes.length = 0
   lampPositions.length = 0
   resetGrid()
+
+  const preserve = new Set<THREE.Object3D>([moon, rim, player])
+  const removeList: THREE.Object3D[] = []
+  scene.children.forEach(c => {
+    if (preserve.has(c)) return
+    if (c === player || c.userData?.role === 'player') return
+    if (c instanceof THREE.HemisphereLight || c instanceof THREE.AmbientLight) return
+    if (c.userData?.isCoreWorld) return
+    removeList.push(c)
+  })
+  removeList.forEach(c => scene.remove(c))
 }
 
-export function zoneAt(x, z) {
+export function zoneAt(x: number, z: number): { id: string; n: string } | null {
   const cur = getCurrentCase()
   if (cur && cur.map && cur.map.zoneAt) {
-    return cur.map.zoneAt(x, z)
+    return cur.map.zoneAt(x, z) || null
   }
   return null
 }
 
-export function applyWorldFromFlags() {
+export function applyWorldFromFlags(): void {
   const cur = getCurrentCase()
   if (cur && cur.map && cur.map.applyWorldFromFlags) {
     cur.map.applyWorldFromFlags(G)
   }
 }
 
-export function openGate() {
+export function openGate(): void {
   const cur = getCurrentCase()
   if (cur && cur.map && cur.map.openGate) {
     cur.map.openGate(G, setFlag)

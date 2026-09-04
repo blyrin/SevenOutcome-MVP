@@ -1,33 +1,34 @@
 import * as THREE from 'three'
-import { setMusic, sfx } from './audio.js'
-import { openBoard } from './board.js'
-import { advanceDialogue, endDialogue, handleDialogueKey, startDialogue } from './dialogue.js'
+import { setMusic, sfx } from './audio'
+import { openBoard } from './board'
+import { advanceDialogue, endDialogue, handleDialogueKey, startDialogue } from './dialogue'
 import {
   addClue, addItem, checkFX, closeModal, dlgOpen, failFX, G, gainXP, hasFlag, modalOpen, setFlag, toast, uiStack,
-} from './state.js'
-import { openHist, openInv, refreshObjectives, togglePause } from './ui.js'
-import { $, clamp, dist2, lerp } from './utils.js'
-import { camera, findPath, interactMeshes, isBlocked, ITAB, NPCS, player, renderer, toG, zoneAt } from './world.js'
-import { getCurrentCase } from './cases/caseManager.js'
+} from './state'
+import { openHist, openInv, refreshObjectives, togglePause } from './ui'
+import { $, clamp, dist2, lerp } from './utils'
+import { camera, findPath, interactMeshes, isBlocked, ITAB, NPCS, player, renderer, toG, zoneAt } from './world'
+import { getCurrentCase } from './cases/caseManager'
+import type { AttrKey } from './types'
 
-export let path = []
+export let path: Array<[number, number]> = []
 export let walkT = 0
-export let pendingI = null
-export const wKeys = {}
+export let pendingI: string | null = null
+export const wKeys: Record<string, number> = {}
 export let camZoom = 1
 export let timeScale = 1
 export let timeScaleT = 1
 export const camOff = new THREE.Vector3(0, 23, 14)
 
-export function setTimeScaleT(v) {
+export function setTimeScaleT(v: number): void {
   timeScaleT = v
 }
 
-export function setTimeScale(v) {
+export function setTimeScale(v: number): void {
   timeScale = v
 }
 
-export function canStandAt(x, z, r = 0.32) {
+export function canStandAt(x: number, z: number, r = 0.32): boolean {
   const [minGx, minGy] = toG(x - r, z - r)
   const [maxGx, maxGy] = toG(x + r, z + r)
   for (let gy = minGy; gy <= maxGy; gy++) {
@@ -40,7 +41,7 @@ export function canStandAt(x, z, r = 0.32) {
   return true
 }
 
-export function canWalkDirectly(x1, z1, x2, z2, r = 0.32) {
+export function canWalkDirectly(x1: number, z1: number, x2: number, z2: number, r = 0.32): boolean {
   const dx = x2 - x1, dz = z2 - z1
   const dist = Math.hypot(dx, dz)
   if (dist < 0.05) {
@@ -58,11 +59,11 @@ export function canWalkDirectly(x1, z1, x2, z2, r = 0.32) {
   return true
 }
 
-export function smoothPath(rawPath) {
+export function smoothPath(rawPath: Array<[number, number]>): Array<[number, number]> {
   if (rawPath.length <= 2) {
     return rawPath
   }
-  const result = []
+  const result: Array<[number, number]> = []
   let curX = player.position.x, curZ = player.position.z
   let i = 0
   while (i < rawPath.length) {
@@ -81,7 +82,7 @@ export function smoothPath(rawPath) {
   return result
 }
 
-export function moveTo(wx, wz) {
+export function moveTo(wx: number, wz: number): void {
   if (canWalkDirectly(player.position.x, player.position.z, wx, wz, 0.32)) {
     path = [[wx, wz]]
     pendingI = null
@@ -94,7 +95,7 @@ export function moveTo(wx, wz) {
   }
 }
 
-export function tryWalk(dx, dz, dt) {
+export function tryWalk(dx: number, dz: number, dt: number): boolean {
   const dist = Math.hypot(dx, dz)
   if (dist < 0.0001) {
     return false
@@ -122,7 +123,7 @@ let targetRot = 0
 let curVelX = 0, curVelZ = 0
 const camLookTarget = new THREE.Vector3(0, 1, 10)
 
-export function updatePlayer(dt) {
+export function updatePlayer(dt: number): void {
   if (dlgOpen()) {
     path = []
     walkT = 0
@@ -272,7 +273,7 @@ export function updatePlayer(dt) {
   const curArea = zn ? zn.n : '郊野'
   const fullArea = prefix + curArea
   const areaName = $('areaName')
-  if (areaName.textContent !== fullArea) {
+  if (areaName && areaName.textContent !== fullArea) {
     areaName.textContent = fullArea
     if (zn && !G.zones[zn.id]) {
       G.zones[zn.id] = 1
@@ -293,9 +294,13 @@ export function updatePlayer(dt) {
   camera.lookAt(camLookTarget)
 }
 
-export function pendingCheck() {
+export function pendingCheck(): void {
   if (pendingI) {
     const it = ITAB[pendingI]
+    if (!it) {
+      pendingI = null
+      return
+    }
     const p = it.mesh.getWorldPosition(new THREE.Vector3())
     const maxD = pendingI === 'fountain' ? 3.6 : 2.8
     if (dist2(player.position.x, player.position.z, p.x, p.z) < maxD) {
@@ -309,17 +314,17 @@ export function pendingCheck() {
 
 export const ray = new THREE.Raycaster()
 export const mouseV = new THREE.Vector2()
-export let hoverId = null
+export let hoverId: string | null = null
 export let scanning = false
 export const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
 
-export function pickInteract(e) {
+export function pickInteract(e: MouseEvent | PointerEvent): string | null {
   mouseV.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1)
   ray.setFromCamera(mouseV, camera)
-  const vis = interactMeshes.filter(m => m.visible !== false && ITAB[m.userData.iid] && !ITAB[m.userData.iid].hidden)
+  const vis = interactMeshes.filter(m => m.visible && ITAB[m.userData.iid] && !ITAB[m.userData.iid].hidden)
   const hits = ray.intersectObjects(vis, true)
   for (const h of hits) {
-    let o = h.object
+    let o: THREE.Object3D | null = h.object
     while (o && !o.userData.iid) {
       o = o.parent
     }
@@ -330,7 +335,7 @@ export function pickInteract(e) {
   return null
 }
 
-export function flavor(id, txt) {
+export function flavor(id: string, txt: string): void {
   if (!G.flavorXP[id]) {
     G.flavorXP[id] = 1
     gainXP(5, '探索发现')
@@ -338,7 +343,7 @@ export function flavor(id, txt) {
   toast(txt)
 }
 
-export function useInteract(id) {
+export function useInteract(id: string): void {
   sfx('click')
   if (id in NPCS) {
     const d = NPCS[id]
@@ -359,8 +364,8 @@ export function useInteract(id) {
       addItem,
       setFlag,
       hasFlag,
-      checkFX,
-      failFX,
+      checkFX: (attr: AttrKey, dc: number) => checkFX(attr, dc),
+      failFX: (attr: AttrKey, dc: number, msg?: string) => failFX(attr, dc, msg),
       flavor,
       toast,
       sfx,
@@ -369,22 +374,28 @@ export function useInteract(id) {
   }
 }
 
-export function initControlsEvents() {
+export function initControlsEvents(): void {
   camera.position.set(0, 28, 26)
-  renderer.domElement.addEventListener('pointermove', e => {
+  renderer.domElement.addEventListener('pointermove', (e: PointerEvent) => {
     if (modalOpen()) {
       return
     }
     hoverId = pickInteract(e)
     renderer.domElement.style.cursor = hoverId ? 'pointer' : 'default'
     for (const k in NPCS) {
-      NPCS[k].ring.material.opacity = hoverId === k ? 0.6 : 0
+      const ring = NPCS[k]?.ring
+      if (ring) {
+        const mt = ring.material
+        if (!Array.isArray(mt) && 'opacity' in mt) {
+          mt.opacity = hoverId === k ? 0.6 : 0
+        }
+      }
     }
   })
 
   renderer.domElement.addEventListener('contextmenu', e => e.preventDefault())
 
-  renderer.domElement.addEventListener('pointerdown', e => {
+  renderer.domElement.addEventListener('pointerdown', (e: PointerEvent) => {
     if (!G.started || modalOpen()) {
       return
     }
@@ -395,15 +406,17 @@ export function initControlsEvents() {
     const iid = pickInteract(e)
     if (iid) {
       const it = ITAB[iid]
-      const p = it.mesh.getWorldPosition(new THREE.Vector3())
-      const maxD = iid === 'fountain' ? 3.6 : 2.8
-      if (dist2(player.position.x, player.position.z, p.x, p.z) < maxD) {
-        useInteract(iid)
-      } else {
-        pendingI = iid
-        moveTo(p.x, p.z)
+      if (it) {
+        const p = it.mesh.getWorldPosition(new THREE.Vector3())
+        const maxD = iid === 'fountain' ? 3.6 : 2.8
+        if (dist2(player.position.x, player.position.z, p.x, p.z) < maxD) {
+          useInteract(iid)
+        } else {
+          pendingI = iid
+          moveTo(p.x, p.z)
+        }
+        return
       }
-      return
     }
     if (e.button === 0 || e.button === 2) {
       mouseV.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1)
@@ -433,8 +446,10 @@ export function initControlsEvents() {
     if (e.key === 'Tab') {
       e.preventDefault()
       scanning = true
-      $('scanTint').classList.add('on')
-      $('scanTip').classList.add('on')
+      const scanTint = $('scanTint')
+      const scanTip = $('scanTip')
+      if (scanTint) scanTint.classList.add('on')
+      if (scanTip) scanTip.classList.add('on')
       return
     }
     if (modalOpen() || !G.started) {
@@ -477,8 +492,10 @@ export function initControlsEvents() {
   addEventListener('keyup', e => {
     if (e.key === 'Tab') {
       scanning = false
-      $('scanTint').classList.remove('on')
-      $('scanTip').classList.remove('on')
+      const scanTint = $('scanTint')
+      const scanTip = $('scanTip')
+      if (scanTint) scanTint.classList.remove('on')
+      if (scanTip) scanTip.classList.remove('on')
     }
     const k = e.key.toLowerCase()
     if ('wasd'.includes(k)) {

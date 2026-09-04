@@ -1,6 +1,7 @@
-import { CLUE_TOTAL } from './clues.js'
+import { CLUE_TOTAL } from './clues'
+import type { EpilogueData, GameState, TimelineItem, VerdictCard } from '../../types'
 
-export const TIMELINE = [
+export const TIMELINE: TimelineItem[] = [
   { t: '20:30', tx: '汉斯在「野猪头」酒馆烂醉买醉，与酒客高声争执', need: 'clue_pete' },
   { t: '21:00', tx: '债主巴罗上门催逼债务，二人在铁匠铺门前爆发激烈争吵', need: 'clue_pete' },
   { t: '21:30', tx: '巴罗催款未果愤然离开，朝镇外河口酒馆方向离去', need: 'clue_pete' },
@@ -10,7 +11,7 @@ export const TIMELINE = [
   { t: '23:00', tx: '夜间巡逻队例行巡查，在铁匠铺发现汉斯遗体，当即封锁现场', need: null },
 ]
 
-export function getVerdictCards(wrongPath, G) {
+export function getVerdictCards(wrongPath: boolean, G: GameState): VerdictCard[] {
   if (wrongPath && !G.flags.deductionCorrect) {
     return [
       { n: '方案 A · 指控高利贷者巴罗', d: '以债务纠纷与催债恐吓信为依据，将债主巴罗列为主凶结案。', v: 'X' },
@@ -19,7 +20,11 @@ export function getVerdictCards(wrongPath, G) {
   }
   return [
     { n: '方案 A · 认定故意伤害致死', d: '依照成文法条机械定性，不予采纳长期受虐与紧急防卫等酌情抗辩事由。', v: 'A' },
-    { n: '方案 B · 裁定正当防卫（无罪释放）', d: '基于案发当晚的致命掐勒与搏斗痕迹，认定系紧急自卫还击，免除刑责。', v: 'B' },
+    {
+      n: '方案 B · 裁定正当防卫（无罪释放）',
+      d: '基于案发当晚的致命掐勒与搏斗痕迹，认定系紧急自卫还击，免除刑责。',
+      v: 'B',
+    },
     {
       n: '方案 C · 呈交日记，追究家暴罪责（减轻定罪）',
       d: '出示物证《玛莎的日记》，以八年受虐绝境为主张，认定防卫过当并求大幅减轻判罚。',
@@ -29,9 +34,9 @@ export function getVerdictCards(wrongPath, G) {
   ]
 }
 
-export function getEpilogueData(v, G) {
+export function getEpilogueData(v: string, G: GameState): EpilogueData {
   const f = G.flags
-  let ps = []
+  let ps: string[] = []
   if (v === 'A') {
     ps = [
       '判决宣读那天，雾杉镇飘下了入冬以来的第一场大雪。',
@@ -40,7 +45,8 @@ export function getEpilogueData(v, G) {
     if (G.clues.includes('clue_diary')) {
       ps.push('你把那本写满受虐血泪的日记锁进了卷宗最底层。法律就是法律——你在壁炉前这样告诉自己，夜复一夜。')
     } else {
-      ps.push('三个月后，清理废旧宅邸的人们在梳妆台暗格里发现了一本泛黄日记。读完它的人无一例外陷入了长久的死寂。而你永远不会知道里面写了什么。')
+      ps.push(
+        '三个月后，清理废旧宅邸的人们在梳妆台暗格里发现了一本泛黄日记。读完它的人无一例外陷入了长久的死寂。而你永远不会知道里面写了什么。')
     }
     ps.push(
       '行刑的那天清晨，「野猪头」酒馆里座无虚席，却没有一人说话。老皮特把一整杯劣酒默默泼在结冰的泥地上，说是敬给冰冷的法律。',
@@ -52,9 +58,11 @@ export function getEpilogueData(v, G) {
       '「裁定：正当防卫，无罪开释！」——法槌落下的脆响在穹顶下回荡，玛莎在被告席上脱力跪倒，泪流满面。',
     ]
     if (f.walletReturned) {
-      ps.push('老皮特以全案最清醒的目击者身份当庭作证，声音回荡在审判席：「诸位陪审员，我亲耳听见她喊『别再打了』。那绝不是凶手发出的声音——那是猎物在利齿下的哀鸣！」')
+      ps.push(
+        '老皮特以全案最清醒的目击者身份当庭作证，声音回荡在审判席：「诸位陪审员，我亲耳听见她喊『别再打了』。那绝不是凶手发出的声音——那是猎物在利齿下的哀鸣！」')
     } else {
-      ps.push('没有证人替她说话。但法庭上出示的撕碎围裙与颈侧青紫掐痕，让全体陪审团最终选择站在了一个反抗长达八年暴行的苦命女人这一边。')
+      ps.push(
+        '没有证人替她说话。但法庭上出示的撕碎围裙与颈侧青紫掐痕，让全体陪审团最终选择站在了一个反抗长达八年暴行的苦命女人这一边。')
     }
     ps.push(
       '这项判例迅速震动了整个郡法院。三个月内，此前受虐被迫反抗的数宗旧案相继启动了重新审理。',
@@ -79,10 +87,10 @@ export function getEpilogueData(v, G) {
       '🦋 你写下的因果：错误的名字被草率签入卷宗，而真正的真相，永远失去了正名的机会。',
     ]
   }
-  ps.push('—— 第一章 · 完 ——')
+  ps.push('—— 第一章 ·完 ——')
 
-  const endNames = { A: '铁面判决', B: '人情与法', C: '破 晓', X: '错误的名字' }
-  const quotes = {
+  const endNames: Record<string, string> = { A: '铁面判决', B: '人情与法', C: '破 晓', X: '错误的名字' }
+  const quotes: Record<string, string> = {
     A: '「法条冰冷，铁面之下可曾听闻哀鸣？」',
     B: '「法理与人情，在生死绝境中并肩而立。」',
     C: '「破晓之前，总得有人先点亮第一盏灯火。」',

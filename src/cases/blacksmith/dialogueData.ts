@@ -1,10 +1,11 @@
-import { line } from './dialogueLines.js'
-import { addClue, checkFX, closeModal, G, gainXP, removeItem, setFlag } from '../../state.js'
-import { openTrial } from '../../trial.js'
-import { refreshObjectives } from '../../ui.js'
-import { openGate } from './map.js'
+import { line } from './dialogueLines'
+import { addClue, checkFX, closeModal, G, gainXP, removeItem, setFlag } from '../../state'
+import { openTrial } from '../../trial'
+import { refreshObjectives } from '../../ui'
+import { openGate } from './map'
+import type { DialogueTree, NpcProfile } from '../../types'
 
-export const NPC_PROFILES = {
+export const NPC_PROFILES: Record<string, NpcProfile> = {
   sheriff: { title: '治安警官', role: '现场封锁与初查负责', color: '#6898d0' },
   coroner: { title: '法医官', role: '死因鉴定与伤痕检验', color: '#7fa6b3' },
   martha: { title: '死者遗孀', role: '第一发现人与重大嫌疑人', color: '#b97ca8' },
@@ -14,7 +15,7 @@ export const NPC_PROFILES = {
   greta: { title: '附近邻舍', role: '长期家庭矛盾目击者', color: '#c8a87c' },
 }
 
-export const DLG = {
+export const DLG: Record<string, () => DialogueTree> = {
   sheriff() {
     const f = G.flags
     return {
@@ -284,7 +285,7 @@ export const DLG = {
       },
     }
   },
-  pete() {
+  pete(): DialogueTree {
     const f = G.flags
     if (f.walletReturned) {
       return {
@@ -377,7 +378,11 @@ export const DLG = {
               },
               next: 'c',
             },
-            { t: '让我看看账本。', cond: () => !G.clues.includes('clue_debt') && G.attrs.strw < 4 && !G.clues.includes('clue_letter'), next: 'cref' },
+            {
+              t: '让我看看账本。',
+              cond: () => !G.clues.includes('clue_debt') && G.attrs.strw < 4 && !G.clues.includes('clue_letter'),
+              next: 'cref',
+            },
             {
               t: '（出示保险单）这个，你认得吗？',
               cond: () => G.clues.includes('clue_insurance') && !f.insAsked,

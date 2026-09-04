@@ -1,4 +1,6 @@
-export const DIALOGUE_LINES = {
+import type { DialogueLineItem, FormattedDialogueLine } from '../../types'
+
+export const DIALOGUE_LINES: Record<string, DialogueLineItem> = {
   // 1. 警长 雷诺 (sheriff)
   sheriff_intro: {
     id: 'sheriff_intro',
@@ -428,7 +430,7 @@ export const DIALOGUE_LINES = {
   },
 }
 
-export function line(id, ...params) {
+export function line(id: string, ...params: Array<string | number>): FormattedDialogueLine {
   const item = DIALOGUE_LINES[id]
   if (!item) {
     return { sp: '', tx: '', lineId: id, voiceUrl: null }
@@ -442,7 +444,7 @@ export function line(id, ...params) {
   }
 }
 
-export function findVoiceUrl(text) {
+export function findVoiceUrl(text: string): string | null {
   if (!text) {
     return null
   }

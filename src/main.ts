@@ -1,15 +1,15 @@
 import './style.css'
 import * as THREE from 'three'
-import { auInit } from './audio.js'
-import { initBoardEvents } from './board.js'
-import { initControlsEvents, path, scanning, setTimeScale, timeScale, timeScaleT, updatePlayer } from './controls.js'
-import { initDialogueDOMEvents, startDialogue } from './dialogue.js'
-import { dlgOpen, G, initModalEvents, modalOpen, toast } from './state.js'
-import { drawMinimap, initUIEvents, refreshHUD, refreshObjectives, updateInv } from './ui.js'
-import { $, dist2, lerp } from './utils.js'
-import { applyWorldFromFlags, camera, composer, ensureScanLabel, ITAB, labels, NPCS, player } from './world.js'
-import { caseBlacksmith } from './cases/blacksmith/index.js'
-import { getCurrentCase, loadCase } from './cases/caseManager.js'
+import { auInit } from './audio'
+import { initBoardEvents } from './board'
+import { initControlsEvents, path, scanning, setTimeScale, timeScale, timeScaleT, updatePlayer } from './controls'
+import { initDialogueDOMEvents, startDialogue } from './dialogue'
+import { dlgOpen, G, initModalEvents, modalOpen, toast } from './state'
+import { drawMinimap, initUIEvents, refreshHUD, refreshObjectives, updateInv } from './ui'
+import { $, dist2, lerp } from './utils'
+import { applyWorldFromFlags, camera, composer, ensureScanLabel, ITAB, labels, NPCS, player } from './world'
+import { caseBlacksmith } from './cases/blacksmith'
+import { getCurrentCase, loadCase } from './cases/caseManager'
 
 initModalEvents()
 initBoardEvents()
@@ -22,7 +22,7 @@ loadCase(caseBlacksmith)
 let lastT = performance.now()
 const v = new THREE.Vector3()
 
-function animate() {
+function animate(): void {
   requestAnimationFrame(animate)
   const now = performance.now()
   const dt = Math.min((now - lastT) / 1000, 0.05)
@@ -65,9 +65,9 @@ function animate() {
     if (scanning && G.started) {
       const p = it.mesh.getWorldPosition(new THREE.Vector3())
       const dd = dist2(player.position.x, player.position.z, p.x, p.z)
-      el.style.opacity = dd < 16 ? 1 : 0
+      el.style.opacity = dd < 16 ? '1' : '0'
     } else {
-      el.style.opacity = 0
+      el.style.opacity = '0'
     }
   }
 
@@ -83,7 +83,7 @@ function animate() {
         L.el.style.top = ((-v.y + 1) / 2) * innerHeight + 'px'
       }
     }
-    L.el.style.opacity = show ? 1 : 0
+    L.el.style.opacity = show ? '1' : '0'
   })
 
   updateInv(dt)
@@ -91,25 +91,31 @@ function animate() {
   drawMinimap()
 }
 
-$('btnStart').onclick = () => {
-  auInit()
-  $('intro').classList.add('off')
-  G.started = true
-  refreshHUD()
-  refreshObjectives()
-  const curCase = getCurrentCase()
-  const startNpc = curCase?.meta?.startNpc
-  if (startNpc) {
-    setTimeout(() => {
-      startDialogue(startNpc)
-    }, 1200)
-  }
-  const startHint = curCase?.meta?.startHint || '点击地面移动 · 按住 Tab 感知周围交互目标'
-  setTimeout(() => {
-    if (!path.length) {
-      toast(startHint)
+const btnStart = $('btnStart')
+if (btnStart) {
+  btnStart.onclick = () => {
+    auInit()
+    const intro = $('intro')
+    if (intro) {
+      intro.classList.add('off')
     }
-  }, 600)
+    G.started = true
+    refreshHUD()
+    refreshObjectives()
+    const curCase = getCurrentCase()
+    const startNpc = curCase?.meta?.startNpc
+    if (startNpc) {
+      setTimeout(() => {
+        startDialogue(startNpc)
+      }, 1200)
+    }
+    const startHint = curCase?.meta?.startHint || '点击地面移动 · 按住 Tab 感知周围交互目标'
+    setTimeout(() => {
+      if (!path.length) {
+        toast(startHint)
+      }
+    }, 600)
+  }
 }
 
 refreshHUD()

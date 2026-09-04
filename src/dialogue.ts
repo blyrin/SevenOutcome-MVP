@@ -1,26 +1,35 @@
-import { isVoicePlaying, playVoice, sfx, stopVoice } from './audio.js'
-import { setTimeScaleT } from './controls.js'
-import { G, toast } from './state.js'
-import { refreshObjectives } from './ui.js'
-import { $, ATTR_LABELS } from './utils.js'
-import { NPCS } from './world.js'
-import { getCurrentCase } from './cases/caseManager.js'
+import { isVoicePlaying, playVoice, sfx, stopVoice } from './audio'
+import { setTimeScaleT } from './controls'
+import { G, toast } from './state'
+import { refreshObjectives } from './ui'
+import { $, ATTR_LABELS } from './utils'
+import { NPCS } from './world'
+import { getCurrentCase } from './cases/caseManager'
+import type { AttrKey, DialogueChoice, DialogueNode, DialogueTree, NpcProfile } from './types'
 
-export let dlgState = null
-let typeTimer = null
+export interface DialogueSessionState {
+  npc: string
+  isTyping: boolean
+  choices: DialogueChoice[]
+  D?: DialogueTree
+  node?: DialogueNode
+}
+
+export let dlgState: DialogueSessionState | null = null
+let typeTimer: ReturnType<typeof setInterval> | null = null
 let typeFull = ''
 let typeIdx = 0
 export let lastDlgNpc = ''
 
-export const NPC_PROFILES = new Proxy({}, {
-  get(target, prop) {
+export const NPC_PROFILES: Record<string, NpcProfile> = new Proxy({} as Record<string, NpcProfile>, {
+  get(target, prop: string) {
     const cur = getCurrentCase()
     if (cur && cur.dialogue && cur.dialogue.profiles) {
       return cur.dialogue.profiles[prop]
     }
     return target[prop]
   },
-  has(target, prop) {
+  has(target, prop: string) {
     const cur = getCurrentCase()
     if (cur && cur.dialogue && cur.dialogue.profiles) {
       return prop in cur.dialogue.profiles
@@ -29,14 +38,14 @@ export const NPC_PROFILES = new Proxy({}, {
   },
 })
 
-export function hist(sp, tx) {
+export function hist(sp: string, tx: string): void {
   G.history.push({ s: sp, t: tx })
   if (G.history.length > 20) {
     G.history.shift()
   }
 }
 
-export function startDialogue(id) {
+export function startDialogue(id: string): void {
   lastDlgNpc = id
   dlgState = { npc: id, isTyping: false, choices: [] }
   document.body.classList.add('dlg')
@@ -51,10 +60,13 @@ export function startDialogue(id) {
   goNode(D, D.start)
 }
 
-export function goNode(D, nid) {
+export function goNode(D: DialogueTree, nid: string): void {
   const node = D.nodes[nid]
   if (!node) {
     endDialogue()
+    return
+  }
+  if (!dlgState) {
     return
   }
   dlgState.D = D
@@ -67,8 +79,11 @@ export function goNode(D, nid) {
     box.innerHTML = ''
   }
 
-  const sp = node.sp || NPCS[dlgState.npc].n
-  $('dlgSpeaker').textContent = sp
+  const sp = node.sp || (NPCS[dlgState.npc] ? NPCS[dlgState.npc].n : dlgState.npc)
+  const dlgSpeaker = $('dlgSpeaker')
+  if (dlgSpeaker) {
+    dlgSpeaker.textContent = sp
+  }
 
   const roleEl = $('dlgSpeakerRole')
   if (roleEl) {
@@ -90,7 +105,10 @@ export function goNode(D, nid) {
   hist(sp, node.tx)
   typeFull = node.tx
   typeIdx = 0
-  $('dlgText').textContent = ''
+  const dlgText = $('dlgText')
+  if (dlgText) {
+    dlgText.textContent = ''
+  }
 
   const curCase = getCurrentCase()
   const findVoiceUrl = curCase?.dialogue?.findVoiceUrl
@@ -101,23 +119,35 @@ export function goNode(D, nid) {
     stopVoice()
   }
 
-  clearInterval(typeTimer)
+  if (typeTimer !== null) {
+    clearInterval(typeTimer)
+  }
   typeTimer = setInterval(() => {
     typeIdx += 2
-    $('dlgText').textContent = typeFull.slice(0, typeIdx)
+    const dtEl = $('dlgText')
+    if (dtEl) {
+      dtEl.textContent = typeFull.slice(0, typeIdx)
+    }
     if (typeIdx % 6 === 0 && !isVoicePlaying()) {
       sfx('tick')
     }
     if (typeIdx >= typeFull.length) {
-      clearInterval(typeTimer)
+      if (typeTimer !== null) {
+        clearInterval(typeTimer)
+        typeTimer = null
+      }
       finishType(node)
     }
   }, 24)
 }
 
-function finishType(node) {
+function finishType(node: DialogueNode): void {
+  if (!dlgState) return
   dlgState.isTyping = false
-  $('dlgText').textContent = typeFull
+  const dlgText = $('dlgText')
+  if (dlgText) {
+    dlgText.textContent = typeFull
+  }
   renderChoices(node)
 
   const hintEl = $('dlgSkipHint')
@@ -134,15 +164,18 @@ function finishType(node) {
   }
 }
 
-export function skipType() {
-  if (dlgState && dlgState.isTyping) {
-    clearInterval(typeTimer)
+export function skipType(): void {
+  if (dlgState && dlgState.isTyping && dlgState.node) {
+    if (typeTimer !== null) {
+      clearInterval(typeTimer)
+      typeTimer = null
+    }
     typeIdx = typeFull.length
     finishType(dlgState.node)
   }
 }
 
-export function advanceDialogue() {
+export function advanceDialogue(): void {
   if (!dlgState) {
     return
   }
@@ -158,13 +191,17 @@ export function advanceDialogue() {
   }
 }
 
-function selectChoice(c) {
+function selectChoice(c: DialogueChoice): void {
+  if (!dlgState) return
   if (c.req) {
-    const [k, v] = Object.entries(c.req)[0]
-    if (G.attrs[k] < v) {
-      sfx('fail')
-      toast(`【${ ATTR_LABELS[k] }】检定未达标（需 ${ v }）`)
-      return
+    const entries = Object.entries(c.req) as Array<[AttrKey, number]>
+    if (entries.length > 0) {
+      const [k, v] = entries[0]
+      if (G.attrs[k] < v) {
+        sfx('fail')
+        toast(`【${ ATTR_LABELS[k] }】检定未达标（需 ${ v }）`)
+        return
+      }
     }
   }
   sfx('click')
@@ -174,15 +211,17 @@ function selectChoice(c) {
   if (c.act) {
     c.act()
   }
-  if (c.next) {
+  if (c.next && dlgState.D) {
     goNode(dlgState.D, c.next)
   } else {
     endDialogue()
   }
 }
 
-export function renderChoices(node) {
+export function renderChoices(node: DialogueNode): void {
+  if (!dlgState) return
   const box = $('dlgChoices')
+  if (!box) return
   box.innerHTML = ''
   const list = (node.ch || []).filter(c => !c.cond || c.cond())
   list.forEach((c, i) => {
@@ -190,11 +229,14 @@ export function renderChoices(node) {
     d.className = 'chc'
     let reqHtml = ''
     if (c.req) {
-      const [k, v] = Object.entries(c.req)[0]
-      const ok = G.attrs[k] >= v
-      reqHtml = `<span class="req ${ ok ? 'ok' : '' }">[ ${ ATTR_LABELS[k] } ${ G.attrs[k] }/${ v } ]</span>`
-      if (!ok) {
-        d.classList.add('locked')
+      const entries = Object.entries(c.req) as Array<[AttrKey, number]>
+      if (entries.length > 0) {
+        const [k, v] = entries[0]
+        const ok = G.attrs[k] >= v
+        reqHtml = `<span class="req ${ ok ? 'ok' : '' }">[ ${ ATTR_LABELS[k] } ${ G.attrs[k] }/${ v } ]</span>`
+        if (!ok) {
+          d.classList.add('locked')
+        }
       }
     }
     const cleanText = c.t.replace(/^【.*?】\s*/, '').replace(/^\(.*?\)\s*/, '')
@@ -216,13 +258,18 @@ export function renderChoices(node) {
   dlgState.choices = list
 }
 
-export function endDialogue() {
+export function endDialogue(): void {
   stopVoice()
-  clearInterval(typeTimer)
+  if (typeTimer !== null) {
+    clearInterval(typeTimer)
+    typeTimer = null
+  }
   document.body.classList.remove('dlg')
   setTimeScaleT(1)
   dlgState = null
-  G.talked[lastDlgNpc] = 1
+  if (lastDlgNpc) {
+    G.talked[lastDlgNpc] = 1
+  }
   refreshObjectives()
   const box = $('dlgChoices')
   if (box) {
@@ -230,7 +277,7 @@ export function endDialogue() {
   }
 }
 
-export function handleDialogueKey(num) {
+export function handleDialogueKey(num: number): boolean {
   if (!dlgState) {
     return false
   }
@@ -245,11 +292,12 @@ export function handleDialogueKey(num) {
   return false
 }
 
-export function initDialogueDOMEvents() {
+export function initDialogueDOMEvents(): void {
   const box = $('dlgBox')
   if (box) {
     box.addEventListener('click', (e) => {
-      if (e.target.closest('.chc')) {
+      const target = e.target as HTMLElement | null
+      if (target && target.closest('.chc')) {
         return
       }
       advanceDialogue()

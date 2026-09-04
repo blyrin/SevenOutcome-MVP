@@ -1,6 +1,7 @@
-import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import fs from 'node:fs'
+import path from 'node:path'
+import process from 'node:process'
+import { fileURLToPath } from 'node:url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -10,16 +11,22 @@ const args = process.argv.slice(2).filter(a => !a.startsWith('--'))
 let targetId = null
 let caseId = 'blacksmith'
 
+function findCaseDialoguePath(cid) {
+  const tsPath = path.join(rootDir, 'src', 'cases', cid, 'dialogueLines.ts')
+  if (fs.existsSync(tsPath)) return tsPath
+  const jsPath = path.join(rootDir, 'src', 'cases', cid, 'dialogueLines.js')
+  if (fs.existsSync(jsPath)) return jsPath
+  return null
+}
+
 if (args.length === 1) {
-  const caseFilePath = path.join(rootDir, 'src', 'cases', args[0], 'dialogueLines.js')
-  if (fs.existsSync(caseFilePath)) {
+  if (findCaseDialoguePath(args[0])) {
     caseId = args[0]
   } else {
     targetId = args[0]
   }
 } else if (args.length >= 2) {
-  const caseFilePath = path.join(rootDir, 'src', 'cases', args[0], 'dialogueLines.js')
-  if (fs.existsSync(caseFilePath)) {
+  if (findCaseDialoguePath(args[0])) {
     caseId = args[0]
     targetId = args[1]
   } else {
@@ -28,13 +35,13 @@ if (args.length === 1) {
   }
 }
 
-const caseModulePath = path.join(rootDir, 'src', 'cases', caseId, 'dialogueLines.js')
-if (!fs.existsSync(caseModulePath)) {
-  console.error(`Error: Case dialogueLines not found at ${caseModulePath}!`)
+const caseModulePath = findCaseDialoguePath(caseId)
+if (!caseModulePath) {
+  console.error(`Error: Case dialogueLines not found for case "${ caseId }"!`)
   process.exit(1)
 }
 
-const { DIALOGUE_LINES } = await import(`file://${caseModulePath.replace(/\\/g, '/')}`)
+const { DIALOGUE_LINES } = await import(`file://${ caseModulePath.replace(/\\/g, '/') }`)
 const outDir = path.join(rootDir, 'public', 'cases', caseId, 'audio', 'voice')
 
 const apiKey = process.env.MIMO_API_KEY
@@ -79,13 +86,13 @@ async function requestTts(item) {
 
   if (!res.ok) {
     const errText = await res.text()
-    throw new Error(`HTTP ${res.status}: ${errText}`)
+    throw new Error(`HTTP ${ res.status }: ${ errText }`)
   }
 
   const json = await res.json()
   const b64 = json.choices?.[0]?.message?.audio?.data
   if (!b64) {
-    throw new Error(`No audio data returned: ${JSON.stringify(json)}`)
+    throw new Error(`No audio data returned: ${ JSON.stringify(json) }`)
   }
 
   return Buffer.from(b64, 'base64')
@@ -103,38 +110,38 @@ async function main() {
     : ALL_LINES
 
   if (targetId && lines.length === 0) {
-    console.error(`Error: Dialogue ID "${targetId}" not found!`)
+    console.error(`Error: Dialogue ID "${ targetId }" not found!`)
     process.exit(1)
   }
 
-  console.log(`Starting voice generation for ${lines.length} dialogue line(s)...`)
+  console.log(`Starting voice generation for ${ lines.length } dialogue line(s)...`)
   let generated = 0
   let skipped = 0
 
   for (let i = 0; i < lines.length; i++) {
     const item = lines[i]
-    const outPath = path.join(outDir, `${item.id}.mp3`)
+    const outPath = path.join(outDir, `${ item.id }.mp3`)
 
     const shouldForce = forceAll || Boolean(targetId)
     if (!shouldForce && fs.existsSync(outPath) && fs.statSync(outPath).size > 1000) {
-      console.log(`[${i + 1}/${lines.length}] Skipped (exists): ${item.id}.mp3`)
+      console.log(`[${ i + 1 }/${ lines.length }] Skipped (exists): ${ item.id }.mp3`)
       skipped++
       continue
     }
 
-    console.log(`[${i + 1}/${lines.length}] Generating: ${item.id} (${item.speaker} / ${item.voice})...`)
+    console.log(`[${ i + 1 }/${ lines.length }] Generating: ${ item.id } (${ item.speaker } / ${ item.voice })...`)
 
     let success = false
     for (let retry = 1; retry <= 3; retry++) {
       try {
         const audioBuf = await requestTts(item)
         fs.writeFileSync(outPath, audioBuf)
-        console.log(`  -> Saved ${item.id}.mp3 (${audioBuf.length} bytes)`)
+        console.log(`  -> Saved ${ item.id }.mp3 (${ audioBuf.length } bytes)`)
         generated++
         success = true
         break
       } catch (err) {
-        console.error(`  -> Attempt ${retry} failed: ${err.message}`)
+        console.error(`  -> Attempt ${ retry } failed: ${ err.message }`)
         if (retry < 3) {
           await sleep(1500)
         }
@@ -142,13 +149,13 @@ async function main() {
     }
 
     if (!success) {
-      console.error(`  -> Failed to generate ${item.id}!`)
+      console.error(`  -> Failed to generate ${ item.id }!`)
     }
 
     await sleep(300)
   }
 
-  console.log(`\nFinished! Generated: ${generated}, Skipped: ${skipped}, Total: ${lines.length}`)
+  console.log(`\nFinished! Generated: ${ generated }, Skipped: ${ skipped }, Total: ${ lines.length }`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

@@ -1,18 +1,20 @@
-export const SLOTS = [
+import type { BoardCorrect, BoardSlot, BoardState, BoardWrongMsg } from '../../types'
+
+export const SLOTS: BoardSlot[] = [
   { id: 'killer', n: '嫌疑人', h: '确定实施致命行为的涉案人员', code: 'FACTOR 01', icon: '👤' },
   { id: 'weapon', n: '凶 器', h: '造成死者头部重创的直接物证', code: 'FACTOR 02', icon: '🔨' },
   { id: 'motive', n: '动 机', h: '诱发致命冲突的核心诱因背景', code: 'FACTOR 03', icon: '⚖️' },
   { id: 'method', n: '手 法', h: '案发当晚搏斗与致死的具体过程', code: 'FACTOR 04', icon: '⏳' },
 ]
 
-export const CORRECT = {
+export const CORRECT: BoardCorrect = {
   killer: ['clue_luke', 'clue_confession'],
   weapon: ['clue_hammer'],
   motive: ['clue_wounds', 'clue_gossip', 'clue_diary'],
   method: ['clue_apron', 'clue_confession'],
 }
 
-export const WRONGMSG = {
+export const WRONGMSG: BoardWrongMsg = {
   'killer:clue_letter': '恐吓信只能证实巴罗曾粗暴逼债，但老皮特的证言证实其案发前便已离去前往镇外。',
   'killer:clue_insurance': '保险单虽以玛莎为唯一受益人，但不足以直接证明致命行为的实施者——你需要目击证词或核心供述。',
   'killer:clue_debt': '账册批注反证巴罗绝不希望汉斯丧命——死人无法还钱，放贷者缺乏行凶动机。',
@@ -22,7 +24,7 @@ export const WRONGMSG = {
   'method:clue_pete': '时间线锁定了案发时序，但手法要素需要还原室内贴身搏斗与反击抗争的物质痕迹。',
 }
 
-export function getDeduceText(b) {
+export function getDeduceText(b: BoardState): string {
   const mtxt = b.motive === 'clue_wounds'
     ? '长年累月遭受暴虐摧残的深渊'
     : (b.motive === 'clue_diary' ? '血泪日记所控诉的八年家庭暴力绝境' : '整条街坊心照不宣的暴虐苦难')

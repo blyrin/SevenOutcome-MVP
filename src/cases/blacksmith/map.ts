@@ -1,23 +1,29 @@
 import * as THREE from 'three'
 import {
-  addLabel, barrel, blocked, blockRect, box, buildingShell, canvasTex, chalkOutline, crate, fabricTex, GW, ITAB, lamp,
-  lampPositions, leatherTex, linenTex, makeChar, mat, scene, solidHouse, stool, table, tagInteractive, tree,
-  wallPlasterTex, wallRects, woodTex,
-} from '../../world.js'
-import { dist2, rand } from '../../utils.js'
-import { CLUE_TOTAL } from './clues.js'
+  addLabel, barrel, blocked, blockRect, box, buildingShell, canvasTex, chalkOutline, crate, GW, ITAB, lamp,
+  lampPositions, leatherTex, makeChar, mat, scene, solidHouse, stool, table, tagInteractive, tree, wallPlasterTex,
+  wallRects, woodTex,
+} from '../../world'
+import { dist2, rand } from '../../utils'
+import { CLUE_TOTAL } from './clues'
+import { banner, toast } from '../../state'
+import { sfx } from '../../audio'
+import type {
+  ClueAddedContext, FlagChangeContext, FlagValue, FountainDropParticle, GameState, InteractContext, MistParticle,
+  MoteParticle, NpcConfig, ObjectivesResult, SmokeParticle, SparkParticle, SplashParticle, WorldContext,
+} from '../../types'
 
-export let embers = null
-export let forgeLight = null
-export let hammerM = null
-export let hamRing = null
-export let letterM = null
-export let apronM = null
-export let walletM = null
-export let gateMesh = null
-export let fwater = null
+export let embers: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null
+export let forgeLight: THREE.PointLight | null = null
+export let hammerM: THREE.Group | null = null
+export let hamRing: THREE.Mesh | null = null
+export let letterM: THREE.Mesh | null = null
+export let apronM: THREE.Mesh | null = null
+export let walletM: THREE.Group | null = null
+export let gateMesh: THREE.Group | null = null
+export let fwater: THREE.Mesh<THREE.CircleGeometry, THREE.MeshStandardMaterial> | null = null
 
-export const NPCS = {
+export const NPCS: Record<string, NpcConfig> = {
   sheriff: { n: '警长 雷诺', pos: [-2.5, 5.2], coat: 0x2e4a6e, hat: 0x1e2c40, badge: true },
   coroner: { n: '验尸官 贝尔', pos: [-15.8, -14.2], coat: 0x565e66, hat: 0x3c434b },
   martha: { n: '玛莎 · 贝克', pos: [-20.5, 11.6], coat: 0x3e3549, hat: false, hair: 0x241d18 },
@@ -36,7 +42,7 @@ export const ZONES = [
   { id: 'pawn', n: '巴罗当铺', x: [13, 25], z: [7, 17] },
 ]
 
-export function zoneAt(x, z) {
+export function zoneAt(x: number, z: number): { id: string; n: string; x: number[]; z: number[] } | null {
   for (const zn of ZONES) {
     if (x >= zn.x[0] && x <= zn.x[1] && z >= zn.z[0] && z <= zn.z[1]) {
       return zn
@@ -45,7 +51,7 @@ export function zoneAt(x, z) {
   return null
 }
 
-export function openGate(G, setFlagFn) {
+export function openGate(G?: GameState, setFlagFn?: (k: string, v?: FlagValue) => void): void {
   if (G && G.flags && G.flags.gateOpen) {
     return
   }
@@ -59,27 +65,27 @@ export function openGate(G, setFlagFn) {
   }
 }
 
-let mistGeo = null
+let mistGeo: THREE.BufferGeometry | null = null
 let mistCount = 140
-let mistVel = []
-let sparkGeo = null
+let mistVel: MistParticle[] = []
+let sparkGeo: THREE.BufferGeometry | null = null
 let sparkCount = 60
-let sparkData = []
-let smokeGeo = null
+let sparkData: SparkParticle[] = []
+let smokeGeo: THREE.BufferGeometry | null = null
 let smokeCount = 18
-let smokeData = []
-let rainGeo = null
+let smokeData: SmokeParticle[] = []
+let rainGeo: THREE.BufferGeometry | null = null
 let rainCount = 320
-let rainVel = []
-let splashGeo = null
+let rainVel: number[] = []
+let splashGeo: THREE.BufferGeometry | null = null
 let splashCount = 36
-let splashData = []
-let fDropGeo = null
+let splashData: SplashParticle[] = []
+let fDropGeo: THREE.BufferGeometry | null = null
 let fDropletCount = 42
-let fDropVel = []
-let moteGeo = null
+let fDropVel: FountainDropParticle[] = []
+let moteGeo: THREE.BufferGeometry | null = null
 let moteCount = 36
-let moteData = []
+let moteData: MoteParticle[] = []
 
 function createDetailedAnvil() {
   const g = new THREE.Group()
@@ -113,7 +119,7 @@ function createDetailedAnvil() {
   return g
 }
 
-export function setupMap(worldCtx) {
+export function setupMap(worldCtx: WorldContext): void {
   const { player } = worldCtx
 
   const groundTex = canvasTex(512, 512, (x, w, h) => {
@@ -201,7 +207,7 @@ export function setupMap(worldCtx) {
     }
   })
 
-  function road(x, z, w, d) {
+  function road(x: number, z: number, w: number, d: number): void {
     const tex = roadTex.clone()
     tex.repeat.set(w / 3.2, d / 3.2)
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({
@@ -498,13 +504,16 @@ export function setupMap(worldCtx) {
   barrel(27.2, -9, .8)
 
   walletM = new THREE.Group()
-  const walletBody = new THREE.Mesh(new THREE.BoxGeometry(.32, .08, .22), mat(0x52321c, { map: leatherTex, roughness: 0.65 }))
+  const walletBody = new THREE.Mesh(new THREE.BoxGeometry(.32, .08, .22),
+    mat(0x52321c, { map: leatherTex, roughness: 0.65 }))
   walletBody.castShadow = true
   walletM.add(walletBody)
-  const walletFlap = new THREE.Mesh(new THREE.BoxGeometry(.325, .03, .12), mat(0x3e2212, { map: leatherTex, roughness: 0.65 }))
+  const walletFlap = new THREE.Mesh(new THREE.BoxGeometry(.325, .03, .12),
+    mat(0x3e2212, { map: leatherTex, roughness: 0.65 }))
   walletFlap.position.set(0, .045, .05)
   walletM.add(walletFlap)
-  const walletClasp = new THREE.Mesh(new THREE.CylinderGeometry(.02, .02, .015, 8), mat(0xd4af37, { metalness: 0.9, roughness: 0.2 }))
+  const walletClasp = new THREE.Mesh(new THREE.CylinderGeometry(.02, .02, .015, 8),
+    mat(0xd4af37, { metalness: 0.9, roughness: 0.2 }))
   walletClasp.position.set(0, .055, .10)
   walletM.add(walletClasp)
   walletM.position.set(28.6, .06, 5.2)
@@ -670,18 +679,19 @@ export function setupMap(worldCtx) {
 
   for (const k in NPCS) {
     const d = NPCS[k]
-    d.mesh = makeChar(d.coat, d.hat, { hat: d.hat !== false, hair: d.hair, badge: d.badge, role: k })
-    d.mesh.position.set(d.pos[0], 0, d.pos[1])
+    const m = makeChar(d.coat, d.hat, { hat: d.hat !== false, hair: d.hair, badge: d.badge, role: k })
+    m.position.set(d.pos[0], 0, d.pos[1])
+    d.mesh = m
     const ring = new THREE.Mesh(new THREE.RingGeometry(.5, .62, 28),
       new THREE.MeshBasicMaterial({ color: 0xd9a441, transparent: true, opacity: 0, side: THREE.DoubleSide }))
     ring.rotation.x = -Math.PI / 2
     ring.position.y = .045
-    d.mesh.add(ring)
+    m.add(ring)
     d.ring = ring
-    tagInteractive(d.mesh, k, d.n, 'npc')
+    tagInteractive(m, k, d.n, 'npc')
 
     addLabel(
-      () => d.mesh.position.clone().add(new THREE.Vector3(0, 2.15, 0)),
+      () => m.position.clone().add(new THREE.Vector3(0, 2.15, 0)),
       `<span class="dot" style="background:#d9a441"></span>${ d.n }`,
       '',
       () => dist2(player.position.x, player.position.z, d.pos[0], d.pos[1]) < 16,
@@ -912,11 +922,11 @@ export function setupMap(worldCtx) {
   scene.add(new THREE.Points(moteGeo, moteMat))
 }
 
-export function updateAtmosphere(dt, now) {
-  if (!mistGeo) {
+export function updateAtmosphere(dt: number, now: number): void {
+  if (!mistGeo || !sparkGeo || !smokeGeo || !rainGeo || !splashGeo || !fDropGeo || !moteGeo) {
     return
   }
-  const mPos = mistGeo.attributes.position.array
+  const mPos = mistGeo.attributes.position.array as Float32Array
   for (let i = 0; i < mistCount; i++) {
     const idx = i * 3
     const v = mistVel[i]
@@ -929,8 +939,8 @@ export function updateAtmosphere(dt, now) {
   }
   mistGeo.attributes.position.needsUpdate = true
 
-  const sPos = sparkGeo.attributes.position.array
-  const sCol = sparkGeo.attributes.color.array
+  const sPos = sparkGeo.attributes.position.array as Float32Array
+  const sCol = sparkGeo.attributes.color.array as Float32Array
   for (let i = 0; i < sparkCount; i++) {
     const idx = i * 3
     const d = sparkData[i]
@@ -962,7 +972,7 @@ export function updateAtmosphere(dt, now) {
   sparkGeo.attributes.position.needsUpdate = true
   sparkGeo.attributes.color.needsUpdate = true
 
-  const smPos = smokeGeo.attributes.position.array
+  const smPos = smokeGeo.attributes.position.array as Float32Array
   for (let i = 0; i < smokeCount; i++) {
     const idx = i * 3
     const d = smokeData[i]
@@ -978,7 +988,7 @@ export function updateAtmosphere(dt, now) {
   }
   smokeGeo.attributes.position.needsUpdate = true
 
-  const rPos = rainGeo.attributes.position.array
+  const rPos = rainGeo.attributes.position.array as Float32Array
   for (let i = 0; i < rainCount; i++) {
     const idx = i * 3
     rPos[idx + 1] -= rainVel[i] * dt
@@ -991,7 +1001,7 @@ export function updateAtmosphere(dt, now) {
   }
   rainGeo.attributes.position.needsUpdate = true
 
-  const spPos = splashGeo.attributes.position.array
+  const spPos = splashGeo.attributes.position.array as Float32Array
   for (let i = 0; i < splashCount; i++) {
     const idx = i * 3
     const d = splashData[i]
@@ -1005,7 +1015,7 @@ export function updateAtmosphere(dt, now) {
   }
   splashGeo.attributes.position.needsUpdate = true
 
-  const fdPos = fDropGeo.attributes.position.array
+  const fdPos = fDropGeo.attributes.position.array as Float32Array
   for (let i = 0; i < fDropletCount; i++) {
     const idx = i * 3
     const v = fDropVel[i]
@@ -1028,7 +1038,7 @@ export function updateAtmosphere(dt, now) {
   }
   fDropGeo.attributes.position.needsUpdate = true
 
-  const mtPos = moteGeo.attributes.position.array
+  const mtPos = moteGeo.attributes.position.array as Float32Array
   for (let i = 0; i < moteCount; i++) {
     const idx = i * 3
     const d = moteData[i]
@@ -1040,7 +1050,7 @@ export function updateAtmosphere(dt, now) {
   moteGeo.attributes.position.needsUpdate = true
 }
 
-export function update(dt, now) {
+export function update(dt: number, now: number): void {
   const pu = (Math.sin(now / 300) + 1) / 2
   if (embers) {
     embers.material.color.setHSL(0.05, 0.95, 0.42 + pu * 0.14)
@@ -1061,11 +1071,11 @@ export function update(dt, now) {
   updateAtmosphere(dt, now)
 }
 
-export function applyWorldFromFlags(G) {
+export function applyWorldFromFlags(G: GameState): void {
   if (!G) {
     return
   }
-  const hasFlag = k => !!G.flags[k]
+  const hasFlag = (k: string): boolean => !!G.flags[k]
   if (hasFlag('clue_hammer')) {
     if (ITAB.hammer) ITAB.hammer.hidden = true
     if (hammerM) hammerM.visible = false
@@ -1089,7 +1099,7 @@ export function applyWorldFromFlags(G) {
   }
 }
 
-export function onFlagChange(k, v, ctx) {
+export function onFlagChange(k: string, v: FlagValue, ctx: FlagChangeContext): void {
   const { G, setFlag, refreshObjectives } = ctx
   if (k === 'walletReturned') {
     banner('🦋 因 果 回 响', '善举会被记住——皮特想起了那个夜晚，暗巷的栅栏门也为你打开。', 4200)
@@ -1102,7 +1112,7 @@ export function onFlagChange(k, v, ctx) {
   }
 }
 
-export function onClueAdded(clueId, ctx) {
+export function onClueAdded(clueId: string, ctx: ClueAddedContext): void {
   const { G, setFlag, hasFlag } = ctx
   if (G.clues.length === 3 && !hasFlag('boardHint')) {
     setFlag('boardHint')
@@ -1110,7 +1120,7 @@ export function onClueAdded(clueId, ctx) {
   }
 }
 
-export function onInteract(id, ctx) {
+export function onInteract(id: string, ctx: InteractContext): void {
   const { G, addClue, addItem, setFlag, hasFlag, checkFX, failFX, flavor, toast, sfx } = ctx
   switch (id) {
     case 'hammer':
@@ -1131,10 +1141,12 @@ export function onInteract(id, ctx) {
     case 'body':
       setFlag('seenBody')
       ctx.refreshObjectives()
-      flavor('body', '白色粉笔勾勒出汉斯倒毙的扭曲轮廓。大片暗红血泊已经凝固发黑，四周泥灰被踩得凌乱不堪——验尸官贝尔正在一旁查验致命伤痕。')
+      flavor('body',
+        '白色粉笔勾勒出汉斯倒毙的扭曲轮廓。大片暗红血泊已经凝固发黑，四周泥灰被踩得凌乱不堪——验尸官贝尔正在一旁查验致命伤痕。')
       break
     case 'anvil':
-      flavor('anvil', '粗粝厚重的铁砧上坑洼交错。平整的台面边缘留有一道新鲜劈出的锐利擦痕——似乎是不久前猛烈器械撞击留下的。')
+      flavor('anvil',
+        '粗粝厚重的铁砧上坑洼交错。平整的台面边缘留有一道新鲜劈出的锐利擦痕——似乎是不久前猛烈器械撞击留下的。')
       break
     case 'forge':
       flavor('forge', '炉火早已熄灭冷透，余温散尽。灰白色的炉渣里斜插着半截烧焦的拨火棍，地面落满了煤屑与厚厚的灰尘。')
@@ -1215,8 +1227,8 @@ export function onInteract(id, ctx) {
   }
 }
 
-export function getObjectives(G) {
-  const hasFlag = k => !!G.flags[k]
+export function getObjectives(G: GameState): ObjectivesResult {
+  const hasFlag = (k: string): boolean => !!G.flags[k]
   if (!hasFlag('caseStarted')) {
     return { notStartedText: '与警长雷诺对话了解案情', list: [] }
   }
@@ -1234,8 +1246,9 @@ mmBase.width = 176
 mmBase.height = 132;
 (() => {
   const c = mmBase.getContext('2d')
-  const sx = x => ((x + 41) / 82) * 176
-  const sy = z => ((z + 29) / 58) * 132
+  if (!c) return
+  const sx = (x: number): number => ((x + 41) / 82) * 176
+  const sy = (z: number): number => ((z + 29) / 58) * 132
   c.fillStyle = '#0c1118'
   c.fillRect(0, 0, 176, 132)
   c.fillStyle = '#2a3140'
@@ -1245,7 +1258,7 @@ mmBase.height = 132;
   c.fillRect(sx(-3.2), 0, sx(3.2) - sx(-3.2), 132)
   c.fillStyle = '#2b3038'
   c.fillRect(sx(25.4), sy(-16), sx(31.2) - sx(25.4), sy(14) - sy(-16))
-  const B = [
+  const B: Array<[[number, number], [number, number], string]> = [
     [[-26, -20], [-14, -10], '#4a3028'],
     [[-24, 8], [-16, 16], '#3a3a4a'],
     [[10, -18], [24, -8], '#4a3e2c'],
@@ -1267,10 +1280,10 @@ mmBase.height = 132;
   c.stroke()
 })()
 
-export function drawMinimap(mmc, player) {
+export function drawMinimap(mmc: CanvasRenderingContext2D, player: THREE.Group): void {
   mmc.drawImage(mmBase, 0, 0)
-  const sx = x => ((x + 41) / 82) * 176
-  const sy = z => ((z + 29) / 58) * 132
+  const sx = (x: number): number => ((x + 41) / 82) * 176
+  const sy = (z: number): number => ((z + 29) / 58) * 132
   const p = performance.now() / 400
 
   for (const k in NPCS) {

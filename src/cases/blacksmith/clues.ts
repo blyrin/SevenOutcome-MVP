@@ -1,9 +1,10 @@
 import * as THREE from 'three'
-import { canvasTex, fabricTex, leatherTex, linenTex, mat, woodTex } from '../../world.js'
-import { rand } from '../../utils.js'
-import { hasFlag } from '../../state.js'
+import { canvasTex, leatherTex, linenTex, mat, woodTex } from '../../world'
+import { rand } from '../../utils'
+import { hasFlag } from '../../state'
+import type { Clue, Item } from '../../types'
 
-export const CLUES = {
+export const CLUES: Record<string, Clue> = {
   clue_hammer: {
     name: '染血的铁锤',
     icon: '🔨',
@@ -105,34 +106,40 @@ export const CLUES = {
 
 export const CLUE_TOTAL = Object.keys(CLUES).length
 
-export const ITEMS = {
+export const ITEMS: Record<string, Item> = {
   clue_hammer: {
     name: '染血的铁锤',
+    icon: '🔨',
     d: '炉火锻造的铁匠工具，如今成了夺命凶器。锤柄握手处有一道深深的抓痕与手印——挥动它的人，手在剧烈发抖。',
   },
   clue_letter: {
     name: '催债恐吓信',
+    icon: '✉️',
     d: '放贷人巴罗字迹粗重狠戾。信纸被反复揉皱又被小心抚平——死者生前曾翻来覆去读了无数遍，满是逼入绝路的彷徨。',
   },
   clue_insurance: {
     name: '人身保险单',
+    icon: '🧾',
     d: '巨额保单，保额一千金币。一个背负巨债被逼入死角的酒鬼，却在绝望中暗暗为常年受虐的妻子立下了这笔契约。',
   },
   clue_apron: {
     name: '撕碎的围裙',
+    icon: '🧵',
     d: '粗麻布料撕裂边缘参差破碎，纤维里浸透着炉灰、冷汗与暗红血迹，无声诉说着那一夜生死存亡的惨烈撕扯。',
   },
   clue_diary: {
     name: '玛莎的日记',
+    icon: '📖',
     d: '磨损得褪色发白的小本子。第一页写着：「他又动手了。」字迹从八年前的颤抖惊惧，逐渐化作冰冷而绝望的死寂。',
   },
   wallet: {
     name: '皮特的钱包',
+    icon: '👛',
     d: '磨破了皮角的棕色旧牛皮夹，里面放着几枚薄铜板与一张泛黄褪色的老画像。该还给它的主人了。',
   },
 }
 
-export function questState() {
+export function questState(): string {
   return hasFlag('walletReturned') ? 'done' : (hasFlag('walletQuest') ? 'active' : 'idle')
 }
 
@@ -224,7 +231,7 @@ const apronClueTex = canvasTex(256, 256, (x, w, h) => {
   }
 })
 
-export function itemMesh(id) {
+export function itemMesh(id: string): THREE.Group {
   const g = new THREE.Group()
   const M = mat
   if (id === 'clue_hammer') {
@@ -250,7 +257,8 @@ export function itemMesh(id) {
   if (id === 'wallet') {
     const w = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.16, 0.78), M(0x563822, { map: leatherTex, roughness: 0.65 }))
     g.add(w)
-    const flap = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.06, 0.36), M(0x422816, { map: leatherTex, roughness: 0.65 }))
+    const flap = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.06, 0.36),
+      M(0x422816, { map: leatherTex, roughness: 0.65 }))
     flap.position.set(0, 0.1, 0.22)
     g.add(flap)
     const clasp = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 8),
@@ -264,9 +272,11 @@ export function itemMesh(id) {
     g.add(coin)
   }
   if (id === 'clue_diary') {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.2, 1.25), M(0x4e272a, { map: diaryCoverTex, roughness: 0.7 }))
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.2, 1.25),
+      M(0x4e272a, { map: diaryCoverTex, roughness: 0.7 }))
     g.add(b)
-    const pages = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.14, 1.18), M(0xede2cb, { map: linenTex, roughness: 0.85 }))
+    const pages = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.14, 1.18),
+      M(0xede2cb, { map: linenTex, roughness: 0.85 }))
     pages.position.set(0.02, 0, 0)
     g.add(pages)
     const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1.26, 6), M(0x381b1d, { map: leatherTex }))
@@ -277,7 +287,8 @@ export function itemMesh(id) {
     g.add(ribbon)
   }
   if (id === 'clue_letter') {
-    const l = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.03, 0.82), M(0xf6eedb, { map: letterDocTex, roughness: 0.8 }))
+    const l = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.03, 0.82),
+      M(0xf6eedb, { map: letterDocTex, roughness: 0.8 }))
     g.add(l)
     const fold = new THREE.Mesh(new THREE.BoxGeometry(1.16, 0.015, 0.02), M(0xded0ba))
     fold.position.set(0, 0.02, 0)
@@ -287,7 +298,8 @@ export function itemMesh(id) {
     g.add(wax)
   }
   if (id === 'clue_insurance') {
-    const p = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.02, 1.28), M(0xf8f2e4, { map: insuranceDocTex, roughness: 0.8 }))
+    const p = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.02, 1.28),
+      M(0xf8f2e4, { map: insuranceDocTex, roughness: 0.8 }))
     g.add(p)
     const header = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.025, 0.22), M(0x2a463a))
     header.position.set(0, 0.01, -0.5)
@@ -297,7 +309,8 @@ export function itemMesh(id) {
     g.add(seal)
   }
   if (id === 'clue_apron') {
-    const a = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.03, 1.15), M(0x7a6254, { map: apronClueTex, roughness: 0.88 }))
+    const a = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.03, 1.15),
+      M(0x7a6254, { map: apronClueTex, roughness: 0.88 }))
     g.add(a)
     const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.02, 0.32), M(0x5c2b2b, { map: apronClueTex }))
     pocket.position.set(0, 0.02, 0.12)
