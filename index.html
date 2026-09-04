@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>雾杉镇疑案 · 铁匠之死</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Serif+SC:wght@400;600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+<div id="app">
+  <div id="labels"></div>
+  <div id="vignette"></div>
+  <div id="scanTint"></div>
+  <div id="scanTip">环境感知中</div>
+  <div class="lbox" id="lb-t"></div>
+  <div class="lbox" id="lb-b"></div>
+
+  <div id="hud-tl">
+    <div id="chapterTag">第一章 · 铁匠之死</div>
+    <div id="areaName">雾杉镇 · 集市广场</div>
+    <div id="objBox">
+      <div class="ot">当前调查进展</div>
+      <div id="objList"></div>
+    </div>
+  </div>
+  <div id="hud-tr">
+    <div class="mm-frame">
+      <canvas id="minimap" width="176" height="132"></canvas>
+      <div class="mm-cross"></div>
+    </div>
+    <div id="mm-title">区域俯瞰</div>
+  </div>
+  <div id="hud-bl">
+    <div id="portrait">
+      <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter">
+        <path d="M12 2l7 3.5v5.5c0 5-3.5 9-7 11-3.5-2-7-6-7-11V5.5L12 2z"/>
+        <path d="M12 7v5"/>
+        <path d="M10 15h4"/>
+      </svg>
+    </div>
+    <div id="pcinfo">
+      <div id="pcname">侦探 · 科尔 <span id="lvlbadge">Lv.1</span></div>
+      <div id="xpbar">
+        <div id="xpfill"></div>
+      </div>
+      <div id="attrRow"></div>
+      <div id="pendPts">+ 可分配属性点</div>
+    </div>
+  </div>
+  <div id="hud-br">
+    <div class="hud-key"><kbd>左键</kbd><span>移动/调查</span></div>
+    <div class="hud-key"><kbd>Tab</kbd><span>感知</span></div>
+    <div class="hud-key"><kbd>B</kbd><span>告示板</span></div>
+    <div class="hud-key"><kbd>I</kbd><span>证物</span></div>
+    <div class="hud-key"><kbd>H</kbd><span>笔录</span></div>
+    <div class="hud-key"><kbd>Esc</kbd><span>菜单</span></div>
+  </div>
+
+  <div id="toasts"></div>
+  <div id="banner">
+    <div class="b1"></div>
+    <div class="b2"></div>
+  </div>
+  <div id="cluePop">
+    <div class="card">
+      <div class="pin"></div>
+      <div class="ct"></div>
+      <div class="cd"></div>
+      <div class="tags"></div>
+    </div>
+  </div>
+  <div id="checkRoll">
+    <div class="cr1"></div>
+    <div class="cr2"></div>
+  </div>
+
+  <div id="dlgBox">
+    <div class="dlg-header">
+      <div class="dlg-speaker-wrap">
+        <span id="dlgSpeaker"></span>
+        <span id="dlgSpeakerRole"></span>
+      </div>
+      <div id="dlgSkipHint" class="dlg-skip-hint">[ 空格 / 点击快进 ]</div>
+    </div>
+    <div id="dlgText"></div>
+    <div id="dlgChoices"></div>
+  </div>
+
+  <!-- 告示板 -->
+  <div class="modal" id="boardModal">
+    <div class="panel">
+      <div class="pclose" data-close="boardModal">✕</div>
+      <div class="ptitle">案情分析板</div>
+      <div id="boardSub">CASE FILE #01 · 铁匠汉斯·贝克命案</div>
+      <div id="boardBody">
+        <div id="cluePool"></div>
+        <div id="boardRight">
+          <div id="slotGrid"></div>
+          <div id="deduceCard">
+            <div class="dt">✦ 推论成立</div>
+            <div id="deduceText"></div>
+          </div>
+          <div id="boardMsg">尚无推论。点选左侧线索填入要素插槽。</div>
+          <div id="boardBtns">
+            <button class="btn ghost" id="btnClear">清空</button>
+            <button class="btn" id="btnVerify">验证组合</button>
+            <button class="btn warn" id="btnSubmit">提交结案</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 审判 -->
+  <div class="modal" id="trialModal">
+    <div class="panel">
+      <div class="ptitle">终局裁决</div>
+      <div id="trialSub">基于已查明的证据链，做出最终案件定性</div>
+      <div id="trialBody">
+        <div id="tlWrap">
+          <h3>案件推演时间线</h3>
+          <div id="tlList"></div>
+        </div>
+        <div id="verdictWrap">
+          <h3>裁决方案</h3>
+          <div id="verdictList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 背包 -->
+  <div class="modal" id="invModal">
+    <div class="panel">
+      <div class="pclose" data-close="invModal">✕</div>
+      <div class="ptitle" style="font-size:22px">随身物证与道具</div>
+      <div id="invBody">
+        <div id="invGrid"></div>
+        <div id="invDetail">
+          <div id="invViewer"></div>
+          <div id="invName">—</div>
+          <div id="invDesc">选择一件物品查看物证详情。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 升级 -->
+  <div class="modal" id="levelupModal">
+    <div class="panel">
+      <div class="pclose" data-close="levelupModal">✕</div>
+      <div class="ptitle" style="font-size:22px">侦探特质分配</div>
+      <div class="lu-sub">可用属性点：<b id="luPts">0</b></div>
+      <div id="luRows"></div>
+      <div style="text-align:center;margin-top:20px">
+        <button class="btn" id="luDone">保存并确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 对话记录 -->
+  <div class="modal" id="historyModal">
+    <div class="panel">
+      <div class="pclose" data-close="historyModal">✕</div>
+      <div class="ptitle" style="font-size:22px">调查对话笔录</div>
+      <div id="histList"></div>
+    </div>
+  </div>
+
+  <!-- 暂停 -->
+  <div class="modal" id="pauseModal">
+    <div class="panel">
+      <div class="ptitle" style="font-size:26px">调查暂停</div>
+      <button class="btn" id="btnResume">继续调查</button>
+      <button class="btn" id="btnSave">保存进度</button>
+      <button class="btn" id="btnLoad">读取存档</button>
+      <button class="btn" id="btnMusic">背景音乐：开</button>
+      <button class="btn" id="btnVoice">角色配音：开</button>
+      <button class="btn warn" id="btnRestart">重新开始</button>
+    </div>
+  </div>
+
+  <!-- 确认框 -->
+  <div class="modal" id="confirmModal">
+    <div class="panel" style="text-align:center">
+      <div class="ptitle" style="font-size:20px">确认提请裁决</div>
+      <div id="cfText"></div>
+      <div class="cf-actions">
+        <button class="btn warn" id="cfYes">确认提请</button>
+        <button class="btn ghost" id="cfNo">暂不提交</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="epi">
+    <div id="epiText"></div>
+    <div id="epiStats"></div>
+  </div>
+
+  <div id="intro">
+    <div class="it-brand">
+      <div class="it-badge">雾杉镇探案辑录</div>
+      <div class="it2">铁匠之死</div>
+      <div class="it3">THE BLACKSMITH'S DEMISE</div>
+    </div>
+    <div class="it4">
+      铁匠汉斯倒在熄灭的锻炉旁，头部受钝器重创。<br>
+      各怀心事的遗孀、学徒与债主——谎言与迷雾笼罩着小镇。<br>
+      勘查现场、走访证人、拼合证据链，做出最终裁决。
+    </div>
+    <button class="btn it-btn" id="btnStart">开 始 调 查</button>
+    <div class="it5">
+      <span>左键移动 / 调查</span>
+      <span>Tab 环境感知</span>
+      <span>B 告示板推演</span>
+      <span>I 随身证物</span>
+      <span>Esc 菜单</span>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

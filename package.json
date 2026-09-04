@@ -1,0 +1,30 @@
+{
+  "name": "SevenOutcome-MVP",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview",
+    "voices": "node scripts/generate-voices.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "11.25.0",
+      "onFail": "download"
+    }
+  },
+  "packageManager": "pnpm@11.25.0",
+  "devDependencies": {
+    "vite": "^8.2.2"
+  },
+  "dependencies": {
+    "three": "0.128.0"
+  }
+}

@@ -1,0 +1,567 @@
+import * as THREE from 'three'
+import { setMusic, sfx } from './audio.js'
+import { openBoard } from './board.js'
+import { addDiaryItem } from './clues.js'
+import { advanceDialogue, endDialogue, handleDialogueKey, skipType, startDialogue } from './dialogue.js'
+import { addClue, addItem, checkFX, closeModal, dlgOpen, failFX, G, gainXP, hasFlag, modalOpen, setFlag, toast, uiStack } from './state.js'
+import { openHist, openInv, refreshObjectives, togglePause } from './ui.js'
+import { $, clamp, dist2, lerp } from './utils.js'
+import { camera, findPath, interactMeshes, isBlocked, ITAB, NPCS, openGate, player, renderer, toG, zoneAt } from './world.js'
+
+export let path = []
+export let walkT = 0
+export let pendingI = null
+export const wKeys = {}
+export let camZoom = 1
+export let timeScale = 1
+export let timeScaleT = 1
+export const camOff = new THREE.Vector3(0, 23, 14)
+camera.position.set(0, 28, 26)
+
+export function setTimeScaleT(v) {
+  timeScaleT = v
+}
+
+export function setTimeScale(v) {
+  timeScale = v
+}
+
+export function canStandAt(x, z, r = 0.32) {
+  const [minGx, minGy] = toG(x - r, z - r)
+  const [maxGx, maxGy] = toG(x + r, z + r)
+  for (let gy = minGy; gy <= maxGy; gy++) {
+    for (let gx = minGx; gx <= maxGx; gx++) {
+      if (isBlocked(gx, gy)) {
+        return false
+      }
+    }
+  }
+  return true
+}
+
+export function canWalkDirectly(x1, z1, x2, z2, r = 0.32) {
+  const dx = x2 - x1, dz = z2 - z1
+  const dist = Math.hypot(dx, dz)
+  if (dist < 0.05) {
+    return true
+  }
+  const steps = Math.ceil(dist / 0.25)
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps
+    const px = x1 + dx * t
+    const pz = z1 + dz * t
+    if (!canStandAt(px, pz, r)) {
+      return false
+    }
+  }
+  return true
+}
+
+export function smoothPath(rawPath) {
+  if (rawPath.length <= 2) {
+    return rawPath
+  }
+  const result = []
+  let curX = player.position.x, curZ = player.position.z
+  let i = 0
+  while (i < rawPath.length) {
+    let furthest = i
+    for (let j = rawPath.length - 1; j > i; j--) {
+      if (canWalkDirectly(curX, curZ, rawPath[j][0], rawPath[j][1], 0.3)) {
+        furthest = j
+        break
+      }
+    }
+    result.push(rawPath[furthest])
+    curX = rawPath[furthest][0]
+    curZ = rawPath[furthest][1]
+    i = furthest + 1
+  }
+  return result
+}
+
+export function moveTo(wx, wz) {
+  if (canWalkDirectly(player.position.x, player.position.z, wx, wz, 0.32)) {
+    path = [[wx, wz]]
+    pendingI = null
+    return
+  }
+  const p = findPath(player.position.x, player.position.z, wx, wz)
+  if (p.length) {
+    path = smoothPath(p)
+    pendingI = null
+  }
+}
+
+export function tryWalk(dx, dz, dt) {
+  const dist = Math.hypot(dx, dz)
+  if (dist < 0.0001) {
+    return false
+  }
+  const ndx = (dx / dist) * 5.8 * dt
+  const ndz = (dz / dist) * 5.8 * dt
+  const r = 0.32
+  if (canStandAt(player.position.x + ndx, player.position.z + ndz, r)) {
+    player.position.x += ndx
+    player.position.z += ndz
+    return true
+  }
+  if (canStandAt(player.position.x + ndx, player.position.z, r)) {
+    player.position.x += ndx
+    return true
+  }
+  if (canStandAt(player.position.x, player.position.z + ndz, r)) {
+    player.position.z += ndz
+    return true
+  }
+  return false
+}
+
+let targetRot = 0
+let curVelX = 0, curVelZ = 0
+const camLookTarget = new THREE.Vector3(0, 1, 10)
+
+export function updatePlayer(dt) {
+  if (dlgOpen()) {
+    path = []
+    walkT = 0
+    curVelX = 0
+    curVelZ = 0
+    if (player.userData.leftArm && player.userData.rightArm) {
+      player.userData.leftArm.rotation.x *= 0.82
+      player.userData.rightArm.rotation.x *= 0.82
+    }
+    if (player.userData.leftLeg && player.userData.rightLeg) {
+      player.userData.leftLeg.rotation.x *= 0.82
+      player.userData.rightLeg.rotation.x *= 0.82
+    }
+    return
+  }
+
+  const prevX = player.position.x
+  const prevZ = player.position.z
+
+  let inputX = 0, inputZ = 0
+  if (wKeys.w) inputZ -= 1
+  if (wKeys.s) inputZ += 1
+  if (wKeys.a) inputX -= 1
+  if (wKeys.d) inputX += 1
+
+  const hasKeyboard = inputX !== 0 || inputZ !== 0
+
+  if (hasKeyboard) {
+    path = []
+    pendingI = null
+    const len = Math.hypot(inputX, inputZ)
+    inputX /= len
+    inputZ /= len
+
+    const targetSpeed = 5.8
+    const targetVx = inputX * targetSpeed
+    const targetVz = inputZ * targetSpeed
+
+    const accel = 1 - Math.exp(-22 * dt)
+    curVelX = lerp(curVelX, targetVx, accel)
+    curVelZ = lerp(curVelZ, targetVz, accel)
+
+    const stepX = curVelX * dt
+    const stepZ = curVelZ * dt
+
+    if (Math.hypot(stepX, stepZ) > 0.0001) {
+      targetRot = Math.atan2(curVelX, curVelZ)
+      const r = 0.32
+      const px = player.position.x
+      const pz = player.position.z
+
+      if (canStandAt(px + stepX, pz + stepZ, r)) {
+        player.position.x += stepX
+        player.position.z += stepZ
+      } else {
+        let moved = false
+        if (Math.abs(stepX) > 0.0001 && canStandAt(px + stepX, pz, r)) {
+          player.position.x += stepX
+          moved = true
+        }
+        if (Math.abs(stepZ) > 0.0001 && canStandAt(px, pz + stepZ, r)) {
+          player.position.z += stepZ
+          moved = true
+        }
+        if (!moved) {
+          if (canStandAt(px + stepX * 0.4, pz, r)) player.position.x += stepX * 0.4
+          if (canStandAt(px, pz + stepZ * 0.4, r)) player.position.z += stepZ * 0.4
+        }
+      }
+    }
+    pendingCheck()
+  } else if (path.length) {
+    curVelX = 0
+    curVelZ = 0
+    let remainingStep = 5.8 * dt
+    while (remainingStep > 0 && path.length) {
+      const wp = path[0]
+      const dx = wp[0] - player.position.x
+      const dz = wp[1] - player.position.z
+      const d = Math.hypot(dx, dz)
+      if (d <= remainingStep) {
+        player.position.x = wp[0]
+        player.position.z = wp[1]
+        remainingStep -= d
+        path.shift()
+      } else {
+        player.position.x += (dx / d) * remainingStep
+        player.position.z += (dz / d) * remainingStep
+        targetRot = Math.atan2(dx, dz)
+        remainingStep = 0
+      }
+    }
+    pendingCheck()
+  } else {
+    curVelX = lerp(curVelX, 0, 1 - Math.exp(-18 * dt))
+    curVelZ = lerp(curVelZ, 0, 1 - Math.exp(-18 * dt))
+    if (Math.hypot(curVelX, curVelZ) > 0.05) {
+      const stepX = curVelX * dt
+      const stepZ = curVelZ * dt
+      if (canStandAt(player.position.x + stepX, player.position.z + stepZ, 0.32)) {
+        player.position.x += stepX
+        player.position.z += stepZ
+      }
+    }
+  }
+
+  const distMoved = Math.hypot(player.position.x - prevX, player.position.z - prevZ)
+  const actualSpeed = distMoved / Math.max(dt, 0.001)
+  const isMoving = actualSpeed > 0.15
+
+  if (isMoving) {
+    let diff = targetRot - player.rotation.y
+    while (diff > Math.PI) diff -= Math.PI * 2
+    while (diff < -Math.PI) diff += Math.PI * 2
+    player.rotation.y += diff * (1 - Math.exp(-20 * dt))
+
+    walkT += dt * Math.min(actualSpeed * 1.8, 12)
+    player.children[0].position.y = 0.9 + Math.abs(Math.sin(walkT)) * 0.07
+    if (player.userData.leftArm && player.userData.rightArm) {
+      const sw = Math.sin(walkT) * 0.42
+      player.userData.leftArm.rotation.x = sw
+      player.userData.rightArm.rotation.x = -sw
+    }
+    if (player.userData.leftLeg && player.userData.rightLeg) {
+      const lsw = Math.sin(walkT) * 0.52
+      player.userData.leftLeg.rotation.x = -lsw
+      player.userData.rightLeg.rotation.x = lsw
+    }
+  } else {
+    walkT = 0
+    const idleY = 0.9 + Math.sin(performance.now() / 900) * 0.02
+    player.children[0].position.y = lerp(player.children[0].position.y, idleY, 1 - Math.exp(-10 * dt))
+    if (player.userData.leftArm && player.userData.rightArm) {
+      player.userData.leftArm.rotation.x *= 0.82
+      player.userData.rightArm.rotation.x *= 0.82
+    }
+    if (player.userData.leftLeg && player.userData.rightLeg) {
+      player.userData.leftLeg.rotation.x *= 0.82
+      player.userData.rightLeg.rotation.x *= 0.82
+    }
+  }
+
+  const zn = zoneAt(player.position.x, player.position.z)
+  const curArea = zn ? zn.n : '雾杉镇 · 郊野'
+  const areaName = $('areaName')
+  if (areaName.textContent !== curArea) {
+    areaName.textContent = '雾杉镇 · ' + curArea
+    if (zn && !G.zones[zn.id]) {
+      G.zones[zn.id] = 1
+      gainXP(10, '发现新区域 · ' + zn.n)
+    }
+  }
+
+  const target = new THREE.Vector3().copy(player.position).
+    add(new THREE.Vector3(camOff.x * camZoom, camOff.y * camZoom, camOff.z * camZoom))
+  if (camera.position.distanceTo(target) > 28) {
+    camera.position.copy(target)
+    camLookTarget.set(player.position.x, 1, player.position.z)
+  } else {
+    camera.position.lerp(target, 1 - Math.exp(-9 * dt))
+    const lookTarget = new THREE.Vector3(player.position.x, 1, player.position.z)
+    camLookTarget.lerp(lookTarget, 1 - Math.exp(-14 * dt))
+  }
+  camera.lookAt(camLookTarget)
+}
+
+export function pendingCheck() {
+  if (pendingI) {
+    const it = ITAB[pendingI]
+    const p = it.mesh.getWorldPosition(new THREE.Vector3())
+    const maxD = pendingI === 'fountain' ? 3.6 : 2.8
+    if (dist2(player.position.x, player.position.z, p.x, p.z) < maxD) {
+      const id = pendingI
+      pendingI = null
+      path = []
+      useInteract(id)
+    }
+  }
+}
+
+export const ray = new THREE.Raycaster()
+export const mouseV = new THREE.Vector2()
+export let hoverId = null
+export let scanning = false
+export const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+
+export function pickInteract(e) {
+  mouseV.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1)
+  ray.setFromCamera(mouseV, camera)
+  const vis = interactMeshes.filter(m => m.visible !== false && ITAB[m.userData.iid] && !ITAB[m.userData.iid].hidden)
+  const hits = ray.intersectObjects(vis, true)
+  for (const h of hits) {
+    let o = h.object
+    while (o && !o.userData.iid) {
+      o = o.parent
+    }
+    if (o) {
+      return o.userData.iid
+    }
+  }
+  return null
+}
+
+export function flavor(id, txt) {
+  if (!G.flavorXP[id]) {
+    G.flavorXP[id] = 1
+    gainXP(5, '探索发现')
+  }
+  toast(txt)
+}
+
+export function useInteract(id) {
+  sfx('click')
+  if (id in NPCS) {
+    const d = NPCS[id]
+    d.mesh.rotation.y = Math.atan2(player.position.x - d.pos[0], player.position.z - d.pos[1])
+    startDialogue(id)
+    return
+  }
+  switch (id) {
+    case 'hammer':
+      if (!G.clues.includes('clue_hammer')) {
+        addClue('clue_hammer')
+        setFlag('hasHammer')
+      } else {
+        toast('铁锤已作为证物记录。')
+      }
+      break
+    case 'letter':
+      if (!G.clues.includes('clue_letter')) {
+        addClue('clue_letter')
+      } else {
+        toast('恐吓信已记录在案。')
+      }
+      break
+    case 'body':
+      setFlag('seenBody')
+      refreshObjectives()
+      flavor('body', '白色粉笔人形轮廓静静躺在血泊中。大片暗红血迹已经发黑干涸——找验尸官贝尔谈谈吧。')
+      break
+    case 'anvil':
+      flavor('anvil', '沉重的铁砧表面布满凹凸的锤痕。最新的一道锋利划痕泛着冷光——像一道新鲜的创口。')
+      break
+    case 'forge':
+      flavor('forge', '锻炉早已经彻底冷透了。冰冷的灰烬里斜插着半截烧焦的拨火铁棍。')
+      break
+    case 'fountain':
+      flavor('fountain', '喷泉的水面映着月光。水底沉着几枚铜币——雾杉镇的人相信，水会记住愿望。')
+      break
+    case 'barrels':
+      if (G.clues.includes('clue_apron')) {
+        toast('木桶后已经没有别的了。')
+        break
+      }
+      if (G.attrs.ins >= 3) {
+        checkFX('ins', 3)
+        addClue('clue_apron')
+      } else {
+        failFX('ins', 3, '木桶后的阴影里似乎有什么……但你看不真切。')
+      }
+      break
+    case 'moneybox':
+      if (G.clues.includes('clue_insurance')) {
+        toast('钱匣已经空了。')
+        break
+      }
+      if (!hasFlag('peteTip')) {
+        toast('床下塞着个上锁的钱匣。也许有人知道它的秘密。')
+        break
+      }
+      if (G.attrs.int >= 4) {
+        checkFX('int', 4)
+        addClue('clue_insurance')
+      } else if (G.attrs.strw >= 3) {
+        checkFX('strw', 3)
+        addClue('clue_insurance')
+      } else {
+        failFX('int', 4, '锁很结实。撬不开，也套不出话。')
+      }
+      break
+    case 'dresser':
+      if (G.clues.includes('clue_diary')) {
+        toast('抽屉空了。')
+        break
+      }
+      if (hasFlag('diaryHint')) {
+        addClue('clue_diary')
+        addDiaryItem()
+        toast('玛莎允许你取走了日记。')
+      } else if (G.attrs.ins >= 4) {
+        checkFX('ins', 4)
+        addClue('clue_diary')
+        addDiaryItem()
+        toast('抽屉缝里露出一角纸页——一本日记。（未经女主人的许可）')
+      } else {
+        failFX('ins', 4, '抽屉上了锁。也许该先问问这屋子的主人。')
+      }
+      break
+    case 'wallet':
+      if (G.inventory.includes('wallet')) {
+        toast('钱包已经在你这儿了。')
+        break
+      }
+      addItem('wallet')
+      sfx('pickup')
+      toast('拾取：破旧的钱包 —— 也许是皮特丢的。')
+      if (ITAB.wallet) {
+        ITAB.wallet.hidden = true
+        ITAB.wallet.mesh.visible = false
+      }
+      break
+    case 'gate':
+      if (hasFlag('gateOpen')) {
+        toast('皮特的钥匙打开了它。暗巷如今畅通无阻。')
+      } else if (hasFlag('peteTip') || G.flags.walletReturned) {
+        openGate()
+        toast('你用老皮特的钥匙打开了栅栏门。暗巷如今畅通无阻。')
+      } else {
+        toast('栅栏门锈住了，挂着一把沉重的锁。要是有人知道钥匙的下落就好了……')
+      }
+      break
+    case 'board':
+      openBoard()
+      break
+  }
+}
+
+export function initControlsEvents() {
+  renderer.domElement.addEventListener('pointermove', e => {
+    if (modalOpen()) {
+      return
+    }
+    hoverId = pickInteract(e)
+    renderer.domElement.style.cursor = hoverId ? 'pointer' : 'default'
+    for (const k in NPCS) {
+      NPCS[k].ring.material.opacity = hoverId === k ? 0.6 : 0
+    }
+  })
+
+  renderer.domElement.addEventListener('contextmenu', e => e.preventDefault())
+
+  renderer.domElement.addEventListener('pointerdown', e => {
+    if (!G.started || modalOpen()) {
+      return
+    }
+    if (dlgOpen()) {
+      advanceDialogue()
+      return
+    }
+    const iid = pickInteract(e)
+    if (iid) {
+      const it = ITAB[iid]
+      const p = it.mesh.getWorldPosition(new THREE.Vector3())
+      const maxD = iid === 'fountain' ? 3.6 : 2.8
+      if (dist2(player.position.x, player.position.z, p.x, p.z) < maxD) {
+        useInteract(iid)
+      } else {
+        pendingI = iid
+        moveTo(p.x, p.z)
+      }
+      return
+    }
+    if (e.button === 0 || e.button === 2) {
+      mouseV.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1)
+      ray.setFromCamera(mouseV, camera)
+      const pt = new THREE.Vector3()
+      if (ray.ray.intersectPlane(groundPlane, pt)) {
+        moveTo(pt.x, pt.z)
+      }
+    }
+  })
+
+  addEventListener('wheel', e => {
+    camZoom = clamp(camZoom + e.deltaY * 0.0008, 0.65, 1.7)
+  })
+
+  addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      if (modalOpen()) {
+        closeModal(uiStack[uiStack.length - 1])
+      } else if (dlgOpen()) {
+        endDialogue()
+      } else {
+        togglePause()
+      }
+      return
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault()
+      scanning = true
+      $('scanTint').classList.add('on')
+      $('scanTip').classList.add('on')
+      return
+    }
+    if (modalOpen() || !G.started) {
+      return
+    }
+    if (dlgOpen()) {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault()
+        advanceDialogue()
+        return
+      }
+      const n = parseInt(e.key)
+      if (n >= 1 && n <= 9) {
+        handleDialogueKey(n)
+        return
+      }
+      return
+    }
+    const k = e.key.toLowerCase()
+    if ('wasd'.includes(k)) {
+      wKeys[k] = 1
+      path = []
+      pendingI = null
+    }
+    if (k === 'b') {
+      openBoard()
+    }
+    if (k === 'i') {
+      openInv()
+    }
+    if (k === 'h') {
+      openHist()
+    }
+    if (k === 'm') {
+      setMusic(!G.musicOn)
+      toast(G.musicOn ? '音乐：开' : '音乐：关')
+    }
+  })
+
+  addEventListener('keyup', e => {
+    if (e.key === 'Tab') {
+      scanning = false
+      $('scanTint').classList.remove('on')
+      $('scanTip').classList.remove('on')
+    }
+    const k = e.key.toLowerCase()
+    if ('wasd'.includes(k)) {
+      wKeys[k] = 0
+    }
+  })
+}
