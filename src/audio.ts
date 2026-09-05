@@ -1,5 +1,6 @@
 import { G } from './state'
 import { getCurrentCase } from './cases/caseManager'
+import { getCachedAssetUrl } from './assetLoader'
 
 export interface AudioContextContainer {
   ctx: AudioContext | null
@@ -71,18 +72,19 @@ export function playBgm(url?: string): void {
     return
   }
   currentBgmUrl = targetUrl
+  const finalSrc = getCachedAssetUrl(targetUrl) || (targetUrl.startsWith('blob:') ? targetUrl : encodeURI(targetUrl))
   if (bgm) {
     fadeBgm(0, 500)
     setTimeout(() => {
       if (!bgm) return
       bgm.pause()
-      bgm.src = encodeURI(targetUrl)
+      bgm.src = finalSrc
       if (G.musicOn) {
         bgm.play().then(() => fadeBgm(0.42, 1500)).catch(() => {})
       }
     }, 520)
   } else {
-    bgm = new Audio(encodeURI(targetUrl))
+    bgm = new Audio(finalSrc)
     bgm.loop = true
     bgm.volume = 0
     AU.bgm = bgm
@@ -116,7 +118,8 @@ export function playVoice(url: string | null): void {
   if (!G.voiceOn || !url) {
     return
   }
-  voiceAudio = new Audio(url)
+  const finalSrc = getCachedAssetUrl(url) || url
+  voiceAudio = new Audio(finalSrc)
   voiceAudio.volume = 1.0
   AU.voice = voiceAudio
 

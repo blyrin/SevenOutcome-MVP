@@ -111,12 +111,34 @@ canvas {
 }
 
 /* ── HUD：左上角案卷进展 ───────── */
+#hud-tl,
+#hud-tr,
+#hud-bl,
+#hud-br {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease, visibility 0.35s ease;
+}
+
+body.game-started #hud-tl,
+body.game-started #hud-tr,
+body.game-started #hud-bl,
+body.game-started #hud-br {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+body.game-started #hud-tl {
+  pointer-events: none;
+}
+
 #hud-tl {
   position: absolute;
   top: 20px;
   left: 20px;
   z-index: 10;
-  pointer-events: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -246,6 +268,7 @@ canvas {
 body.dlg #hud-bl,
 body.dlg #hud-br {
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
   transform: translateY(12px);
 }
@@ -1594,12 +1617,13 @@ body.dlg #dlgBox {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  transition: opacity 0.8s ease;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
   overflow-y: auto;
 }
 
 #intro.off {
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
 }
 
@@ -1852,6 +1876,105 @@ body.dlg #dlgBox {
   margin-top: 10px;
   display: flex;
   justify-content: flex-end;
+}
+
+/* ── 关卡资源加载画面 ───────────── */
+#loadingScreen {
+  position: absolute;
+  inset: 0;
+  z-index: 90;
+  background: radial-gradient(circle at center, #0a0f16 0%, #040608 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+  pointer-events: none;
+}
+
+#loadingScreen.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.ls-panel {
+  width: min(580px, 90vw);
+  background: rgba(10, 14, 20, 0.95);
+  border: 1px solid var(--border-mid);
+  padding: 38px 44px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), inset 0 0 60px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.ls-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: #d4af37;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.ls-title {
+  font-family: var(--font-serif);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--txt-bright);
+  letter-spacing: 3px;
+  margin-bottom: 4px;
+}
+
+.ls-sub {
+  font-size: 12.5px;
+  color: var(--txt-dim);
+  letter-spacing: 2px;
+  margin-bottom: 28px;
+}
+
+.ls-bar-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-dim);
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.ls-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #8a7032, #d4af37, #faebbe);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.65);
+  transition: width 0.12s ease-out;
+}
+
+.ls-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 1px;
+  color: var(--txt-dim);
+}
+
+.ls-status {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80%;
+}
+
+.ls-percent {
+  color: #d4af37;
+  font-weight: 700;
 }
 
 /* ── 响应式适配 ─────────────────── */

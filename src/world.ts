@@ -1489,6 +1489,7 @@ export function makeChar(
 
 export const player = makeChar(0x2e333d, 0x1e222a, { scarf: 0xd9a441, role: 'player' })
 player.position.set(0, 0, 10)
+player.visible = false
 
 export const NPCS: Record<string, NpcEntity> = new Proxy({} as Record<string, NpcEntity>, {
   get(target: Record<string, NpcEntity>, prop: string) {

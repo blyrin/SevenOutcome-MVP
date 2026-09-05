@@ -123,6 +123,14 @@ let targetRot = 0
 let curVelX = 0, curVelZ = 0
 const camLookTarget = new THREE.Vector3(0, 1, 10)
 
+export function snapCamera(): void {
+  const target = new THREE.Vector3().copy(player.position)
+    .add(new THREE.Vector3(camOff.x * camZoom, camOff.y * camZoom, camOff.z * camZoom))
+  camera.position.copy(target)
+  camLookTarget.set(player.position.x, player.position.y + 1, player.position.z)
+  camera.lookAt(camLookTarget)
+}
+
 export function updatePlayer(dt: number): void {
   if (dlgOpen()) {
     path = []

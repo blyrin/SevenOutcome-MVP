@@ -246,6 +246,14 @@ export interface CaseMap {
   NPCS?: Record<string, NpcConfig | NpcEntity>
 }
 
+export interface CaseManifest {
+  id: string
+  title: string
+  subtitle?: string
+  meta: CaseMeta
+  load: () => Promise<CaseDefinition>
+}
+
 export interface CaseDefinition {
   id: string
   title: string

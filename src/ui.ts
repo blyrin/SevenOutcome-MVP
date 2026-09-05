@@ -3,10 +3,17 @@ import { setMusic, setVoice, sfx } from './audio'
 import { closeModal, dlgOpen, G, modalOpen, openModal, toast, xpNeed } from './state'
 import { $, ATTRS, clamp } from './utils'
 import { applyWorldFromFlags, player } from './world'
-import { getAllCases, getCurrentCase, loadCase } from './cases/caseManager'
-import type { AttrKey, CaseDefinition } from './types'
+import {
+  getAllManifests,
+  getCurrentCase,
+  getManifest,
+  getSelectedCaseId,
+  setSelectedCaseId,
+} from './cases/caseManager'
+import type { AttrKey, CaseDefinition, CaseManifest } from './types'
 
 export function refreshHUD(): void {
+  if (!G.started) return
   const lvlbadge = $('lvlbadge')
   if (lvlbadge) {
     lvlbadge.textContent = 'Lv.' + G.level
@@ -30,6 +37,7 @@ export function refreshHUD(): void {
 }
 
 export function refreshObjectives(): void {
+  if (!G.started) return
   const curCase = getCurrentCase()
   const objData = curCase && curCase.getObjectives ? curCase.getObjectives(G) : { list: [] }
   const objList = $('objList')
@@ -204,6 +212,7 @@ export function togglePause(): void {
 }
 
 export function drawMinimap(): void {
+  if (!G.started) return
   const mm = $<HTMLCanvasElement>('minimap')
   if (!mm) return
   const mmc = mm.getContext('2d')
@@ -238,6 +247,69 @@ export function drawMinimap(): void {
   mmc.closePath()
   mmc.fill()
   mmc.restore()
+}
+
+let caseSwitchHandler: ((caseId: string) => Promise<void>) | null = null
+
+export function setCaseSwitchHandler(fn: (caseId: string) => Promise<void>): void {
+  caseSwitchHandler = fn
+}
+
+export function showLoadingScreen(title: string, badge?: string, sub?: string): void {
+  const ls = $('loadingScreen')
+  if (!ls) return
+  const lsBadge = $('lsBadge')
+  if (lsBadge) lsBadge.textContent = badge || 'CASE FILE'
+  const lsTitle = $('lsTitle')
+  if (lsTitle) lsTitle.textContent = title
+  const lsSub = $('lsSub')
+  if (lsSub) lsSub.textContent = sub || '雾杉镇疑案'
+  const lsFill = $('lsFill')
+  if (lsFill) lsFill.style.width = '0%'
+  const lsPercent = $('lsPercent')
+  if (lsPercent) lsPercent.textContent = '0%'
+  const lsStatus = $('lsStatus')
+  if (lsStatus) lsStatus.textContent = '正在检索案件档案…'
+  ls.classList.add('active')
+}
+
+export function updateLoadingProgress(pct: number, status: string): void {
+  const lsFill = $('lsFill')
+  if (lsFill) lsFill.style.width = Math.min(100, Math.max(0, pct)) + '%'
+  const lsPercent = $('lsPercent')
+  if (lsPercent) lsPercent.textContent = Math.min(100, Math.max(0, pct)) + '%'
+  const lsStatus = $('lsStatus')
+  if (lsStatus) lsStatus.textContent = status
+}
+
+export function hideLoadingScreen(): Promise<void> {
+  return new Promise(resolve => {
+    const ls = $('loadingScreen')
+    if (!ls) {
+      resolve()
+      return
+    }
+    ls.classList.remove('active')
+    setTimeout(resolve, 400)
+  })
+}
+
+export function setupIntroFromManifest(manifest: CaseManifest): void {
+  const meta = manifest.meta || {}
+  const title = manifest.title || '未知案件'
+  const subtitle = manifest.subtitle || ''
+
+  document.title = subtitle ? `${ subtitle } · ${ title }` : title
+
+  const it = $('introTitle')
+  if (it) {
+    it.textContent = title
+  }
+
+  const isyn = $('introSynopsis')
+  if (isyn) {
+    isyn.innerHTML = meta.synopsis || '调查现场勘查、走访证人、拼合证据链，做出最终裁决。'
+  }
 }
 
 export function setupCaseUI(caseDef: CaseDefinition | null): void {
@@ -291,28 +363,30 @@ export function renderIntroCaseList(): void {
     return
   }
   box.innerHTML = ''
-  const cases = getAllCases()
-  const curCase = getCurrentCase()
+  const manifests = getAllManifests()
+  const selId = getSelectedCaseId()
 
-  for (const id in cases) {
-    const c = cases[id]
-    const meta = c.meta || {}
-    const isCur = curCase && curCase.id === c.id
+  for (const id in manifests) {
+    const m = manifests[id]
+    const meta = m.meta || {}
+    const isCur = selId === m.id
     const card = document.createElement('div')
     card.className = 'it-case-card' + (isCur ? ' active' : '')
     card.innerHTML = `
       <div class="it-case-card-head">
-        <div class="it-case-title">${ c.title }</div>
+        <div class="it-case-title">${ m.title }</div>
         <span class="it-case-status">${ isCur ? '已就绪' : '可选择' }</span>
       </div>
       <div class="it-case-desc">${ (meta.synopsis || '').replace(/<br\s*\/?>/gi, ' ') }</div>
     `
     card.onclick = () => {
-      if (isCur) {
+      if (selId === m.id) {
         return
       }
       sfx('click')
-      loadCase(c)
+      setSelectedCaseId(m.id)
+      setupIntroFromManifest(m)
+      renderIntroCaseList()
     }
     box.appendChild(card)
   }
@@ -329,13 +403,13 @@ export function renderCaseModal(): void {
     return
   }
   box.innerHTML = ''
-  const cases = getAllCases()
+  const manifests = getAllManifests()
   const curCase = getCurrentCase()
 
-  for (const id in cases) {
-    const c = cases[id]
-    const meta = c.meta || {}
-    const isCur = curCase && curCase.id === c.id
+  for (const id in manifests) {
+    const m = manifests[id]
+    const meta = m.meta || {}
+    const isCur = curCase && curCase.id === m.id
     const card = document.createElement('div')
     card.className = 'case-card' + (isCur ? ' active' : '')
     card.innerHTML = `
@@ -343,8 +417,8 @@ export function renderCaseModal(): void {
         <span class="case-code">${ meta.caseCode || 'CASE' }</span>
         <span class="case-badge">${ isCur ? '正在调查' : '待指派' }</span>
       </div>
-      <div class="case-title">${ c.title }</div>
-      <div class="case-sub">${ c.subtitle || '' }</div>
+      <div class="case-title">${ m.title }</div>
+      <div class="case-sub">${ m.subtitle || '' }</div>
       <div class="case-desc">${ (meta.synopsis || '').replace(/<br>/g, ' ') }</div>
       <div class="case-action">
         <button class="btn ${ isCur ? 'ghost' : 'primary' }">${ isCur ? '当前调查中' : '载入此案件' }</button>
@@ -359,9 +433,10 @@ export function renderCaseModal(): void {
         }
         closeModal('caseModal')
         closeModal('pauseModal')
-        loadCase(c)
-        toast(`已载入案件：${ c.title }`)
         sfx('click')
+        if (caseSwitchHandler) {
+          caseSwitchHandler(m.id)
+        }
       }
     }
     box.appendChild(card)
@@ -441,7 +516,7 @@ export function initUIEvents(): void {
   }
   const btnLoad = $('btnLoad')
   if (btnLoad) {
-    btnLoad.onclick = () => {
+    btnLoad.onclick = async () => {
       const s = localStorage.getItem('wst_save')
       if (!s) {
         toast('没有找到存档')
@@ -450,7 +525,9 @@ export function initUIEvents(): void {
       try {
         const d = JSON.parse(s)
         if (d.caseId && getCurrentCase()?.id !== d.caseId) {
-          loadCase(d.caseId)
+          if (caseSwitchHandler) {
+            await caseSwitchHandler(d.caseId)
+          }
         }
         Object.assign(G.attrs, d.attrs)
         G.xp = d.xp
