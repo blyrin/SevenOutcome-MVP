@@ -6,6 +6,9 @@ import {
   initControlsEvents, path, scanning, setTimeScale, snapCamera, timeScale, timeScaleT, updatePlayer,
 } from './controls'
 import { initDialogueDOMEvents, startDialogue } from './dialogue'
+import {
+  initCameraEvents, isCutsceneActive, isInspectionActive, playOpeningCutscene, updateCamera,
+} from './camera'
 import { dlgOpen, G, initModalEvents, modalOpen, toast } from './state'
 import {
   hideLoadingScreen, initUIEvents, refreshHUD, refreshObjectives, renderIntroCaseList, setCaseSwitchHandler,
@@ -21,6 +24,7 @@ initModalEvents()
 initBoardEvents()
 initUIEvents()
 initControlsEvents()
+initCameraEvents()
 initDialogueDOMEvents()
 
 const initialManifest = getManifest(getSelectedCaseId())
@@ -85,7 +89,7 @@ function animate(): void {
   }
 
   labels.forEach(L => {
-    let show = L.cond && L.cond()
+    let show = !isCutsceneActive() && !dlgOpen() && !isInspectionActive() && L.cond && L.cond()
     if (show) {
       const p = L.getPos()
       v.copy(p).project(camera)
@@ -100,6 +104,7 @@ function animate(): void {
   })
 
   updateInv(dt)
+  updateCamera(dt, now)
   composer.render()
 }
 
@@ -142,17 +147,26 @@ async function launchCase(caseId: string): Promise<void> {
   }
 
   const startNpc = caseDef.meta?.startNpc
-  if (startNpc) {
-    setTimeout(() => {
-      startDialogue(startNpc)
-    }, 800)
-  }
   const startHint = caseDef.meta?.startHint || '点击地面移动 · 按住 Tab 感知周围交互目标'
-  setTimeout(() => {
-    if (!path.length) {
-      toast(startHint)
+
+  const onIntroComplete = () => {
+    if (startNpc) {
+      setTimeout(() => {
+        startDialogue(startNpc)
+      }, 200)
     }
-  }, 400)
+    setTimeout(() => {
+      if (!path.length) {
+        toast(startHint)
+      }
+    }, 400)
+  }
+
+  if (caseDef.cutscene && caseDef.cutscene.shots && caseDef.cutscene.shots.length > 0) {
+    playOpeningCutscene(caseDef.cutscene, onIntroComplete)
+  } else {
+    onIntroComplete()
+  }
 }
 
 setCaseSwitchHandler(launchCase)

@@ -173,6 +173,28 @@ export interface DialogueDefinition {
   line?: (id: string, ...args: Array<string | number>) => FormattedDialogueLine
 }
 
+export interface CutsceneShot {
+  posFrom: [number, number, number]
+  posTo: [number, number, number]
+  lookFrom: [number, number, number]
+  lookTo: [number, number, number]
+  duration: number
+  title?: string
+  caption?: string
+  location?: string
+  easing?: 'smooth' | 'easeOut' | 'easeIn' | 'linear'
+}
+
+export interface CutsceneDefinition {
+  id: string
+  shots: CutsceneShot[]
+}
+
+export interface InspectShot {
+  offset: [number, number, number]
+  lookOffset?: [number, number, number]
+}
+
 export interface CaseMeta {
   caseCode?: string
   chapterTag?: string
@@ -187,6 +209,7 @@ export interface CaseMeta {
   startNpc?: string
   initialPlayerPos?: [number, number, number]
   startHint?: string
+  cutscene?: CutsceneDefinition
 }
 
 export interface ObjectivesResult {
@@ -243,6 +266,7 @@ export interface CaseMap {
   zoneAt?: (x: number, z: number) => { id: string; n: string } | null
   getHeightAt?: (x: number, z: number) => number
   NPCS?: Record<string, NpcConfig | NpcEntity>
+  inspectShots?: Record<string, InspectShot>
 }
 
 export interface CaseManifest {
@@ -271,6 +295,7 @@ export interface CaseDefinition {
   board: BoardDefinition
   trial: TrialDefinition
   map: CaseMap
+  cutscene?: CutsceneDefinition
   getObjectives?: (G: GameState) => ObjectivesResult
 }
 

@@ -1,4 +1,6 @@
-import type { GameState, InteractContext, NpcConfig, ObjectivesResult, SnowParticle, WorldContext } from '../../types'
+import type {
+  GameState, InspectShot, InteractContext, NpcConfig, ObjectivesResult, SnowParticle, WorldContext,
+} from '../../types'
 import * as THREE from 'three'
 import {
   addLabel, blockRect, canvasTex, chalkOutline, fabricTex, lamp, lampGlowTex, leatherTex, makeChar, mat, scene,
@@ -46,6 +48,45 @@ export function zoneAt(x: number, z: number): { id: string; n: string; x: number
     }
   }
   return null
+}
+
+export const inspectShots: Record<string, InspectShot> = {
+  body: {
+    offset: [0.8, 1.8, 2.2],
+    lookOffset: [-0.2, 0.15, 0],
+  },
+  teacup: {
+    offset: [0.45, 1.0, 1.1],
+    lookOffset: [0, 0, 0],
+  },
+  candle: {
+    offset: [0.55, 0.7, 0.95],
+    lookOffset: [0, 0.05, 0],
+  },
+  fireplace: {
+    offset: [0, 1.2, 1.8],
+    lookOffset: [0, 0, 0],
+  },
+  clock: {
+    offset: [0, 0.75, 1.7],
+    lookOffset: [0, 0.15, 0],
+  },
+  greenhouse_desk: {
+    offset: [0, 1.3, 1.4],
+    lookOffset: [0, 0, 0],
+  },
+  clinic_cabinet: {
+    offset: [0, 1.1, 1.5],
+    lookOffset: [0, 0.15, 0],
+  },
+  corridor_mud: {
+    offset: [0.35, 0.95, 1.05],
+    lookOffset: [0, 0, 0],
+  },
+  piano: {
+    offset: [1.1, 1.2, 1.4],
+    lookOffset: [-0.25, 0, 0],
+  },
 }
 
 export function getHeightAt(x: number, z: number): number {

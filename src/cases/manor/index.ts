@@ -3,6 +3,7 @@ import { DIALOGUE_LINES, findVoiceUrl, line, NPC_VOICE_DESIGNS } from './dialogu
 import { DLG, NPC_PROFILES } from './dialogueData'
 import { CORRECT, getDeduceText, SLOTS, WRONGMSG } from './board'
 import { getEpilogueData, getVerdictCards, TIMELINE } from './trial'
+import { manorCutscene } from './cutscene'
 import * as map from './map'
 import type { CaseDefinition } from '../../types'
 
@@ -54,5 +55,6 @@ export const caseManor: CaseDefinition = {
     getEpilogueData,
   },
   map,
+  cutscene: manorCutscene,
   getObjectives: map.getObjectives,
 }

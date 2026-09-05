@@ -5,6 +5,7 @@ import { refreshObjectives } from './ui'
 import { $, ATTR_LABELS } from './utils'
 import { NPCS } from './world'
 import { getCurrentCase } from './cases/caseManager'
+import { focusDialogue, unfocusDialogue } from './camera'
 import type { AttrKey, DialogueChoice, DialogueNode, DialogueTree, NpcProfile } from './types'
 
 export interface DialogueSessionState {
@@ -50,6 +51,7 @@ export function startDialogue(id: string): void {
   dlgState = { npc: id, isTyping: false, choices: [] }
   document.body.classList.add('dlg')
   setTimeScaleT(0.15)
+  focusDialogue(id)
   const curCase = getCurrentCase()
   const trees = curCase && curCase.dialogue ? curCase.dialogue.trees : null
   const D = trees && trees[id] ? trees[id]() : null
@@ -266,6 +268,7 @@ export function endDialogue(): void {
   }
   document.body.classList.remove('dlg')
   setTimeScaleT(1)
+  unfocusDialogue()
   dlgState = null
   if (lastDlgNpc) {
     G.talked[lastDlgNpc] = 1

@@ -469,6 +469,139 @@ body.dlg .lbox {
   height: 38px;
 }
 
+body.cinematic .lbox {
+  height: clamp(48px, 8vh, 80px);
+}
+
+body.cinematic #hud-tl,
+body.cinematic #hud-tr,
+body.cinematic #hud-bl,
+body.cinematic #hud-br {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(6px);
+}
+
+#cinematicOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 22;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(52px, 9vh, 90px) clamp(24px, 5vw, 60px);
+  box-sizing: border-box;
+}
+
+body.cinematic #cinematicOverlay {
+  opacity: 1;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.cinematic-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 680px;
+  gap: 8px;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.95);
+}
+
+#cinematicBadge {
+  font-family: var(--font-serif);
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--accent-light, #c4a77d);
+  text-transform: uppercase;
+  border-left: 2px solid var(--accent-light, #c4a77d);
+  padding-left: 8px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+#cinematicTitle {
+  font-family: var(--font-serif);
+  font-size: clamp(22px, 3.6vw, 34px);
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #fff;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.5s ease 0.05s, transform 0.5s ease 0.05s;
+}
+
+#cinematicLocation {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  letter-spacing: 1.8px;
+  color: #a2bcdb;
+  background: rgba(14, 20, 30, 0.75);
+  padding: 4px 12px;
+  border: 1px solid rgba(162, 188, 219, 0.3);
+  margin-top: 4px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.4s ease 0.1s, transform 0.4s ease 0.1s;
+}
+
+#cinematicCaption {
+  font-size: 14.5px;
+  line-height: 1.65;
+  letter-spacing: 1.2px;
+  color: #dce4ee;
+  max-width: 580px;
+  margin-top: 6px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.5s ease 0.15s, transform 0.5s ease 0.15s;
+}
+
+.cinematic-content.visible #cinematicBadge,
+.cinematic-content.visible #cinematicTitle,
+.cinematic-content.visible #cinematicLocation,
+.cinematic-content.visible #cinematicCaption {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#cinematicSkip {
+  align-self: flex-end;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(10, 14, 20, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+
+#cinematicSkip kbd {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  padding: 1px 6px;
+  border-radius: 2px;
+  font-size: 10px;
+  color: #fff;
+}
+
+#cinematicOverlay:hover #cinematicSkip {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(15, 22, 32, 0.9);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
 /* ── 提示消息 ───────────────────── */
 #toasts {
   position: absolute;

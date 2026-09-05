@@ -9,16 +9,20 @@ import { openHist, openInv, refreshObjectives, togglePause } from './ui'
 import { $, clamp, dist2, lerp } from './utils'
 import { camera, findPath, interactMeshes, isBlocked, ITAB, NPCS, player, renderer, toG, zoneAt } from './world'
 import { getCurrentCase } from './cases/caseManager'
+import {
+  camOff, camZoom, focusInspection, isCutsceneActive, isInspectionActive, setCamZoom, skipCutscene, snapCamera,
+  unfocusInspection,
+} from './camera'
 import type { AttrKey } from './types'
+
+export { camOff, camZoom, snapCamera }
 
 export let path: Array<[number, number]> = []
 export let walkT = 0
 export let pendingI: string | null = null
 export const wKeys: Record<string, number> = {}
-export let camZoom = 1
 export let timeScale = 1
 export let timeScaleT = 1
-export const camOff = new THREE.Vector3(0, 23, 14)
 
 export function setTimeScaleT(v: number): void {
   timeScaleT = v
@@ -29,6 +33,18 @@ export function setTimeScale(v: number): void {
 }
 
 export function canStandAt(x: number, z: number, r = 0.32): boolean {
+  const npcRadius = 0.44
+  const minNpcDistSq = (npcRadius + r) * (npcRadius + r)
+  for (const k in NPCS) {
+    const d = NPCS[k]
+    if (!d || !d.pos) continue
+    const dx = x - d.pos[0]
+    const dz = z - d.pos[1]
+    if (dx * dx + dz * dz < minNpcDistSq) {
+      return false
+    }
+  }
+
   const [minGx, minGy] = toG(x - r, z - r)
   const [maxGx, maxGy] = toG(x + r, z + r)
   for (let gy = minGy; gy <= maxGy; gy++) {
@@ -121,17 +137,24 @@ export function tryWalk(dx: number, dz: number, dt: number): boolean {
 
 let targetRot = 0
 let curVelX = 0, curVelZ = 0
-const camLookTarget = new THREE.Vector3(0, 1, 10)
-
-export function snapCamera(): void {
-  const target = new THREE.Vector3().copy(player.position)
-    .add(new THREE.Vector3(camOff.x * camZoom, camOff.y * camZoom, camOff.z * camZoom))
-  camera.position.copy(target)
-  camLookTarget.set(player.position.x, player.position.y + 1, player.position.z)
-  camera.lookAt(camLookTarget)
-}
 
 export function updatePlayer(dt: number): void {
+  if (isCutsceneActive()) {
+    path = []
+    walkT = 0
+    curVelX = 0
+    curVelZ = 0
+    if (player.userData.leftArm && player.userData.rightArm) {
+      player.userData.leftArm.rotation.x *= 0.82
+      player.userData.rightArm.rotation.x *= 0.82
+    }
+    if (player.userData.leftLeg && player.userData.rightLeg) {
+      player.userData.leftLeg.rotation.x *= 0.82
+      player.userData.rightLeg.rotation.x *= 0.82
+    }
+    return
+  }
+
   if (dlgOpen()) {
     path = []
     walkT = 0
@@ -144,6 +167,22 @@ export function updatePlayer(dt: number): void {
     if (player.userData.leftLeg && player.userData.rightLeg) {
       player.userData.leftLeg.rotation.x *= 0.82
       player.userData.rightLeg.rotation.x *= 0.82
+    }
+    const npcRadius = 0.44
+    const minDist = npcRadius + 0.32
+    const minDistSq = minDist * minDist
+    for (const k in NPCS) {
+      const d = NPCS[k]
+      if (!d || !d.pos) continue
+      const dx = player.position.x - d.pos[0]
+      const dz = player.position.z - d.pos[1]
+      const d2 = dx * dx + dz * dz
+      if (d2 < minDistSq && d2 > 0.00001) {
+        const dist = Math.sqrt(d2)
+        const push = minDist - dist
+        player.position.x += (dx / dist) * push
+        player.position.z += (dz / dist) * push
+      }
     }
     return
   }
@@ -238,6 +277,23 @@ export function updatePlayer(dt: number): void {
     }
   }
 
+  const npcRadius = 0.44
+  const minDist = npcRadius + 0.32
+  const minDistSq = minDist * minDist
+  for (const k in NPCS) {
+    const d = NPCS[k]
+    if (!d || !d.pos) continue
+    const dx = player.position.x - d.pos[0]
+    const dz = player.position.z - d.pos[1]
+    const d2 = dx * dx + dz * dz
+    if (d2 < minDistSq && d2 > 0.00001) {
+      const dist = Math.sqrt(d2)
+      const push = minDist - dist
+      player.position.x += (dx / dist) * push
+      player.position.z += (dz / dist) * push
+    }
+  }
+
   const distMoved = Math.hypot(player.position.x - prevX, player.position.z - prevZ)
   const actualSpeed = distMoved / Math.max(dt, 0.001)
   const isMoving = actualSpeed > 0.15
@@ -292,18 +348,6 @@ export function updatePlayer(dt: number): void {
       gainXP(10, '发现新区域 · ' + zn.n)
     }
   }
-
-  const target = new THREE.Vector3().copy(player.position)
-    .add(new THREE.Vector3(camOff.x * camZoom, camOff.y * camZoom, camOff.z * camZoom))
-  if (camera.position.distanceTo(target) > 28) {
-    camera.position.copy(target)
-    camLookTarget.set(player.position.x, player.position.y + 1, player.position.z)
-  } else {
-    camera.position.lerp(target, 1 - Math.exp(-9 * dt))
-    const lookTarget = new THREE.Vector3(player.position.x, player.position.y + 1, player.position.z)
-    camLookTarget.lerp(lookTarget, 1 - Math.exp(-14 * dt))
-  }
-  camera.lookAt(camLookTarget)
 }
 
 export function pendingCheck(): void {
@@ -374,9 +418,20 @@ export function useInteract(id: string): void {
     return
   }
   if (id === 'board') {
+    unfocusInspection()
     openBoard()
     return
   }
+
+  const it = ITAB[id]
+  if (it && it.mesh && it.kind !== 'board') {
+    const p = it.mesh.getWorldPosition(new THREE.Vector3())
+    const curCase = getCurrentCase()
+    const shots = curCase?.map?.inspectShots
+    const shot = shots ? shots[id] : undefined
+    focusInspection(p, shot)
+  }
+
   const curCase = getCurrentCase()
   if (curCase && curCase.map && curCase.map.onInteract) {
     curCase.map.onInteract(id, {
@@ -418,12 +473,19 @@ export function initControlsEvents(): void {
   renderer.domElement.addEventListener('contextmenu', e => e.preventDefault())
 
   renderer.domElement.addEventListener('pointerdown', (e: PointerEvent) => {
+    if (isCutsceneActive()) {
+      skipCutscene()
+      return
+    }
     if (!G.started || modalOpen()) {
       return
     }
     if (dlgOpen()) {
       advanceDialogue()
       return
+    }
+    if (isInspectionActive()) {
+      unfocusInspection()
     }
     const iid = pickInteract(e)
     if (iid) {
@@ -435,7 +497,17 @@ export function initControlsEvents(): void {
           useInteract(iid)
         } else {
           pendingI = iid
-          moveTo(p.x, p.z)
+          if (iid in NPCS) {
+            const dx = p.x - player.position.x
+            const dz = p.z - player.position.z
+            const dist = Math.hypot(dx, dz)
+            const stopDist = 1.35
+            const tx = dist > stopDist ? p.x - (dx / dist) * stopDist : player.position.x
+            const tz = dist > stopDist ? p.z - (dz / dist) * stopDist : player.position.z
+            moveTo(tx, tz)
+          } else {
+            moveTo(p.x, p.z)
+          }
         }
         return
       }
@@ -452,11 +524,24 @@ export function initControlsEvents(): void {
   })
 
   addEventListener('wheel', e => {
-    camZoom = clamp(camZoom + e.deltaY * 0.0008, 0.65, 1.7)
+    if (modalOpen() || G.verdict || isCutsceneActive() || dlgOpen() || isInspectionActive()) {
+      return
+    }
+    setCamZoom(camZoom + e.deltaY * 0.0008)
   })
 
   addEventListener('keydown', e => {
+    if (isCutsceneActive()) {
+      if (e.key === ' ' || e.key === 'Enter' || e.key === 'Escape') {
+        e.preventDefault()
+        skipCutscene()
+      }
+      return
+    }
     if (e.key === 'Escape') {
+      if (isInspectionActive()) {
+        unfocusInspection()
+      }
       if (modalOpen()) {
         closeModal(uiStack[uiStack.length - 1])
       } else if (dlgOpen()) {
@@ -489,6 +574,9 @@ export function initControlsEvents(): void {
     }
     const k = e.key.toLowerCase()
     if ('wasd'.includes(k)) {
+      if (isInspectionActive()) {
+        unfocusInspection()
+      }
       wKeys[k] = 1
       path = []
       pendingI = null

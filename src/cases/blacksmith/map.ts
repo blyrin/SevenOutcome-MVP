@@ -9,8 +9,8 @@ import { CLUE_TOTAL } from './clues'
 import { banner, toast } from '../../state'
 import { sfx } from '../../audio'
 import type {
-  ClueAddedContext, FlagChangeContext, FlagValue, FountainDropParticle, GameState, InteractContext, MistParticle,
-  MoteParticle, NpcConfig, ObjectivesResult, SmokeParticle, SparkParticle, SplashParticle, WorldContext,
+  ClueAddedContext, FlagChangeContext, FlagValue, FountainDropParticle, GameState, InspectShot, InteractContext,
+  MistParticle, MoteParticle, NpcConfig, ObjectivesResult, SmokeParticle, SparkParticle, SplashParticle, WorldContext,
 } from '../../types'
 
 export let embers: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null
@@ -49,6 +49,49 @@ export function zoneAt(x: number, z: number): { id: string; n: string; x: number
     }
   }
   return null
+}
+
+export const inspectShots: Record<string, InspectShot> = {
+  body: {
+    offset: [0, 2.5, 2.2],
+    lookOffset: [0, 0, 0],
+  },
+  hammer: {
+    offset: [0.7, 1.2, 1.4],
+    lookOffset: [0, 0, 0],
+  },
+  letter: {
+    offset: [0, 1.3, 1.1],
+    lookOffset: [0, -0.08, 0],
+  },
+  forge: {
+    offset: [1.4, 1.2, 1.5],
+    lookOffset: [-0.15, -0.05, 0],
+  },
+  anvil: {
+    offset: [1.1, 1.2, 1.4],
+    lookOffset: [0, 0, 0],
+  },
+  barrels: {
+    offset: [0.8, 1.1, 1.3],
+    lookOffset: [0, -0.05, 0],
+  },
+  moneybox: {
+    offset: [0.7, 0.9, 1.2],
+    lookOffset: [0, 0, 0],
+  },
+  dresser: {
+    offset: [0, 1.2, 1.2],
+    lookOffset: [0, -0.08, 0],
+  },
+  wallet: {
+    offset: [0.5, 1.0, 1.0],
+    lookOffset: [0, 0, 0],
+  },
+  fountain: {
+    offset: [0, 2.2, 2.6],
+    lookOffset: [0, 0.2, 0],
+  },
 }
 
 export function openGate(G?: GameState, setFlagFn?: (k: string, v?: FlagValue) => void): void {
@@ -351,7 +394,8 @@ export function setupMap(worldCtx: WorldContext): void {
 
   tagInteractive(anvil, 'anvil', '铁砧', 'env')
   tagInteractive(embers, 'forge', '锻炉余烬', 'env')
-  chalkOutline(-19.5, -15.5, 0.128)
+  const bodyOutline = chalkOutline(-19.5, -15.5, 0.128)
+  tagInteractive(bodyOutline, 'body', '受害者遗体痕迹', 'clue')
   blockRect(-22.5 - .65, -14 - .35, -22.5 + .65, -14 + .35, 0)
   blockRect(-24.6 - 1.15, -18.6 - .95, -24.6 + 1.15, -18.6 + .95, 0)
 
@@ -696,6 +740,7 @@ export function setupMap(worldCtx: WorldContext): void {
       '',
       () => dist2(player.position.x, player.position.z, d.pos[0], d.pos[1]) < 16,
     )
+    blockRect(d.pos[0] - 0.45, d.pos[1] - 0.45, d.pos[0] + 0.45, d.pos[1] + 0.45)
   }
 
   const mistTex = canvasTex(128, 128, (x, w, h) => {
