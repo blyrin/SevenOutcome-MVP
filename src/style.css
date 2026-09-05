@@ -110,7 +110,7 @@ canvas {
   color: #fff;
 }
 
-/* ── HUD：左上角案卷进展 ───────── */
+/* ── HUD：各个方位容器 ───────── */
 #hud-tl,
 #hud-tr,
 #hud-bl,
@@ -130,14 +130,15 @@ body.game-started #hud-br {
   pointer-events: auto;
 }
 
-body.game-started #hud-tl {
+body.game-started #hud-tl,
+body.game-started #hud-br {
   pointer-events: none;
 }
 
 #hud-tl {
   position: absolute;
-  top: 20px;
-  left: 20px;
+  top: clamp(10px, 2.5vh, 20px);
+  left: clamp(10px, 2.5vw, 20px);
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -163,8 +164,11 @@ body.game-started #hud-tl {
   background: var(--bg-panel);
   border: 1px solid var(--border-dim);
   padding: 10px 14px;
-  max-width: 270px;
+  max-width: min(280px, 36vw);
+  max-height: min(180px, 45vh);
+  overflow-y: auto;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
 }
 
 #objBox .ot {
@@ -211,88 +215,32 @@ body.game-started #hud-tl {
   color: var(--txt-muted);
 }
 
-/* ── HUD：右上角战术小地图 ─────── */
-#hud-tr {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-
-.mm-frame {
-  position: relative;
-  padding: 2px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-dim);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-}
-
-#minimap {
-  display: block;
-  background: #080a0e;
-}
-
-.mm-cross {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-  linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 22px 22px;
-}
-
-#mm-title {
-  font-size: 9.5px;
-  letter-spacing: 2px;
-  color: var(--txt-dim);
-  margin-top: 5px;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-}
 
 /* ── HUD：左下角侦探铭牌 ───────── */
 #hud-bl {
   position: absolute;
-  bottom: 20px;
-  left: 20px;
+  bottom: clamp(10px, 2.5vh, 20px);
+  left: clamp(10px, 2.5vw, 20px);
   z-index: 10;
   display: flex;
-  gap: 8px;
-  align-items: stretch;
+  flex-direction: column;
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 body.dlg #hud-bl,
-body.dlg #hud-br {
+body.dlg #hud-br,
+body.dlg #hud-tr {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   transform: translateY(12px);
 }
 
-#portrait {
-  width: 68px;
-  background: #0d1117;
-  border: 1px solid var(--border-dim);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.badge-icon {
-  width: 32px;
-  height: 32px;
-  color: var(--txt-muted);
-}
-
 #pcinfo {
   background: var(--bg-panel);
   border: 1px solid var(--border-dim);
-  padding: 8px 14px;
-  min-width: 250px;
+  padding: 8px 12px;
+  min-width: min(230px, 40vw);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -314,6 +262,7 @@ body.dlg #hud-br {
   font-size: 10px;
   border: 1px solid var(--border-dim);
   padding: 0 5px;
+  cursor: pointer;
 }
 
 #xpbar {
@@ -372,36 +321,82 @@ body.dlg #hud-br {
   text-decoration: underline;
 }
 
-/* ── HUD：右下角极简操作 Dock ───── */
-#hud-br {
+/* ── HUD：右上角操控按钮 Dock ───── */
+#hud-tr {
   position: absolute;
-  bottom: 20px;
-  right: 20px;
+  top: clamp(10px, 2.5vh, 20px);
+  right: clamp(10px, 2.5vw, 20px);
   z-index: 10;
   display: flex;
-  gap: 6px;
-  background: var(--bg-panel);
-  padding: 6px 12px;
-  border: 1px solid var(--border-dim);
+  gap: clamp(4px, 1vw, 8px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  touch-action: manipulation;
+}
+
+/* ── HUD：右下角调查进展 ───────── */
+#hud-br {
+  position: absolute;
+  bottom: clamp(10px, 2.5vh, 20px);
+  right: clamp(10px, 2.5vw, 20px);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  pointer-events: none;
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
-.hud-key {
-  display: flex;
+.hud-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 10.5px;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 11px;
   color: var(--txt-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-dim);
+  padding: 6px 10px;
+  min-height: 34px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.1s, box-shadow 0.2s;
 }
 
-.hud-key kbd {
+.hud-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-mid);
+  color: var(--txt-bright);
+}
+
+.hud-btn:active {
+  transform: translateY(1px);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.hud-btn.active {
+  border-color: #d4af37;
+  color: #f6ecdc;
+  background: rgba(212, 175, 55, 0.18);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.35);
+}
+
+.hud-btn kbd {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 700;
   padding: 1px 4px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--border-dim);
   color: var(--txt-bright);
+  pointer-events: none;
+}
+
+.hud-btn span {
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 /* ── 电影暗角与感知 ─────────────── */
@@ -639,12 +634,12 @@ body.dlg .lbox {
   bottom: -360px;
   transform: translateX(-50%);
   width: min(840px, 94vw);
-  height: 340px;
+  height: min(320px, 62vh);
   z-index: 25;
   background: rgba(9, 12, 17, 0.98);
   border: 1px solid var(--border-mid);
   border-top: 1px solid rgba(255, 255, 255, 0.25);
-  padding: 16px 22px 18px;
+  padding: clamp(10px, 1.8vh, 16px) clamp(12px, 2vw, 22px);
   transition: bottom 0.35s cubic-bezier(0.1, 0.9, 0.2, 1);
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.85);
   display: flex;
@@ -1314,10 +1309,11 @@ body.dlg #dlgBox {
 /* ── 随身物品 ───────────────────── */
 #invModal .panel {
   width: min(720px, 92vw);
-  height: 440px;
+  height: min(440px, 88vh);
+  max-height: 88vh;
   display: flex;
   flex-direction: column;
-  padding: 18px 22px;
+  padding: clamp(10px, 2vh, 18px) clamp(14px, 2vw, 22px);
 }
 
 #invBody {
@@ -1629,12 +1625,13 @@ body.dlg #dlgBox {
 
 #introContainer {
   width: min(1000px, 94vw);
-  min-height: 460px;
+  max-height: 90vh;
   background: #0c1016;
   border: 1px solid var(--border-mid);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
   display: flex;
   position: relative;
+  overflow: hidden;
 }
 
 #introLeft {
@@ -1642,25 +1639,26 @@ body.dlg #dlgBox {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 42px 48px;
+  padding: clamp(16px, 3vh, 42px) clamp(20px, 3.5vw, 48px);
   border-right: 1px solid var(--border-dim);
+  overflow-y: auto;
 }
 
 .it-main-title {
   font-family: var(--font-serif);
-  font-size: 38px;
+  font-size: clamp(24px, 3.5vw, 38px);
   font-weight: 700;
   color: var(--txt-bright);
-  letter-spacing: 6px;
-  margin: 0 0 16px;
+  letter-spacing: clamp(2px, 0.5vw, 6px);
+  margin: 0 0 clamp(8px, 1.5vh, 16px);
   line-height: 1.2;
 }
 
 .it-synopsis-text {
-  font-size: 13px;
-  line-height: 2.1;
+  font-size: clamp(11.5px, 1.2vw, 13px);
+  line-height: clamp(1.6, 2vh, 2.1);
   color: var(--txt-muted);
-  margin-bottom: 32px;
+  margin-bottom: clamp(14px, 2.5vh, 32px);
 }
 
 .it-action-row {
@@ -1686,8 +1684,9 @@ body.dlg #dlgBox {
   flex: 0.95;
   display: flex;
   flex-direction: column;
-  padding: 34px 36px;
+  padding: clamp(16px, 3vh, 34px) clamp(18px, 2.5vw, 36px);
   background: #080b0f;
+  overflow-y: auto;
 }
 
 .it-right-header {
@@ -1977,37 +1976,92 @@ body.dlg #dlgBox {
   font-weight: 700;
 }
 
-/* ── 响应式适配 ─────────────────── */
-@media (max-width: 900px) {
-  #objBox {
-    display: none;
-  }
+/* ── 手机横屏强制引导遮罩 ───────── */
+#rotateScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: radial-gradient(circle at 50% 50%, #151a24 0%, #070a0e 100%);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
 
-  #hud-br {
-    display: none;
-  }
+#rotateScreen.active {
+  display: flex;
+  opacity: 1;
+  pointer-events: auto;
+}
 
-  #dlgBox {
-    width: 100vw;
-    height: 280px;
-    padding: 12px 14px 14px;
-  }
+.rotate-box {
+  max-width: 420px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 32px 24px;
+  background: rgba(12, 16, 22, 0.95);
+  border: 1px solid var(--border-mid);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85);
+  box-sizing: border-box;
+}
 
-  #introContainer {
-    flex-direction: column;
-    padding: 24px;
-    gap: 24px;
-    min-height: auto;
-  }
+.rotate-phone {
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
 
-  #introLeft {
-    border-right: none;
-    border-bottom: 1px solid var(--border-dim);
-    padding: 0 0 24px 0;
-  }
+.rotate-phone svg {
+  width: 46px;
+  height: 46px;
+  color: #d4af37;
+  animation: phoneRotateAnim 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
 
-  #introRight {
-    padding: 0;
-    background: transparent;
+@keyframes phoneRotateAnim {
+  0% {
+    transform: rotate(0deg);
   }
+  40% {
+    transform: rotate(-90deg);
+  }
+  70% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.rotate-title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  letter-spacing: 2px;
+  color: var(--txt-bright);
+  font-weight: 700;
+}
+
+.rotate-desc {
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--txt-muted);
+}
+
+.rotate-btn {
+  margin-top: 8px;
+  padding: 10px 28px;
+  font-size: 13px;
+  letter-spacing: 2px;
 }

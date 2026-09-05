@@ -1,4 +1,4 @@
-import { clearWorldObjects, player, renderer, resetGrid, scene, camera } from '../world'
+import { camera, clearWorldObjects, player, renderer, resetGrid, scene } from '../world'
 import { playBgm, stopVoice } from '../audio'
 import { G, resetCaseState } from '../state'
 import { setupCaseUI } from '../ui'

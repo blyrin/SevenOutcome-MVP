@@ -3,13 +3,7 @@ import { setMusic, setVoice, sfx } from './audio'
 import { closeModal, dlgOpen, G, modalOpen, openModal, toast, xpNeed } from './state'
 import { $, ATTRS, clamp } from './utils'
 import { applyWorldFromFlags, player } from './world'
-import {
-  getAllManifests,
-  getCurrentCase,
-  getManifest,
-  getSelectedCaseId,
-  setSelectedCaseId,
-} from './cases/caseManager'
+import { getAllManifests, getCurrentCase, getSelectedCaseId, setSelectedCaseId } from './cases/caseManager'
 import type { AttrKey, CaseDefinition, CaseManifest } from './types'
 
 export function refreshHUD(): void {
@@ -211,42 +205,49 @@ export function togglePause(): void {
   }
 }
 
-export function drawMinimap(): void {
-  if (!G.started) return
-  const mm = $<HTMLCanvasElement>('minimap')
-  if (!mm) return
-  const mmc = mm.getContext('2d')
-  if (!mmc) return
-  mmc.clearRect(0, 0, 176, 132)
-  const curCase = getCurrentCase()
-  if (curCase && curCase.map && curCase.map.drawMinimap) {
-    curCase.map.drawMinimap(mmc, player)
+export function initOrientationLock(): void {
+  const overlay = $('rotateScreen')
+  const btn = $('btnRotateFullscreen')
+  if (!overlay) return
+
+  const check = () => {
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    const isPortrait = window.innerHeight > window.innerWidth
+    const needLock = (isTouch || isMobile) && isPortrait
+    overlay.classList.toggle('active', needLock)
   }
-  const sx = (x: number): number => ((x + 41) / 82) * 176
-  const sy = (z: number): number => ((z + 29) / 58) * 132
 
-  mmc.save()
-  mmc.translate(sx(player.position.x), sy(player.position.z))
-  mmc.rotate(Math.PI - player.rotation.y)
+  if (btn) {
+    btn.onclick = async () => {
+      try {
+        const docEl = document.documentElement as HTMLElement & {
+          webkitRequestFullscreen?: () => Promise<void>
+          mozRequestFullScreen?: () => Promise<void>
+        }
+        if (docEl.requestFullscreen) {
+          await docEl.requestFullscreen()
+        } else if (docEl.webkitRequestFullscreen) {
+          await docEl.webkitRequestFullscreen()
+        }
+      } catch (e) {}
 
-  const fovGrad = mmc.createRadialGradient(0, 0, 1, 0, -12, 16)
-  fovGrad.addColorStop(0, 'rgba(96, 182, 168, 0.45)')
-  fovGrad.addColorStop(1, 'rgba(96, 182, 168, 0)')
-  mmc.fillStyle = fovGrad
-  mmc.beginPath()
-  mmc.moveTo(0, 0)
-  mmc.arc(0, 0, 16, -Math.PI / 2 - 0.42, -Math.PI / 2 + 0.42)
-  mmc.closePath()
-  mmc.fill()
+      try {
+        if (screen.orientation && 'lock' in screen.orientation) {
+          await (screen.orientation as any).lock('landscape')
+        }
+      } catch (e) {}
 
-  mmc.fillStyle = '#fff'
-  mmc.beginPath()
-  mmc.moveTo(0, -4.5)
-  mmc.lineTo(3, 3.5)
-  mmc.lineTo(-3, 3.5)
-  mmc.closePath()
-  mmc.fill()
-  mmc.restore()
+      check()
+    }
+  }
+
+  window.addEventListener('resize', check)
+  window.addEventListener('orientationchange', check)
+  if (screen.orientation) {
+    screen.orientation.addEventListener('change', check)
+  }
+  check()
 }
 
 let caseSwitchHandler: ((caseId: string) => Promise<void>) | null = null
@@ -444,7 +445,12 @@ export function renderCaseModal(): void {
 }
 
 export function initUIEvents(): void {
+  initOrientationLock()
   renderIntroCaseList()
+  const lvlbadge = $('lvlbadge')
+  if (lvlbadge) {
+    lvlbadge.onclick = openLevelup
+  }
   const btnPauseCases = $('btnPauseCases')
   if (btnPauseCases) {
     btnPauseCases.onclick = openCaseModal

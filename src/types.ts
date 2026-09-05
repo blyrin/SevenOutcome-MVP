@@ -237,7 +237,6 @@ export interface CaseMap {
   onInteract?: (id: string, ctx: InteractContext) => void
   onFlagChange?: (k: string, v: FlagValue, ctx: FlagChangeContext) => void
   onClueAdded?: (clueId: string, ctx: ClueAddedContext) => void
-  drawMinimap?: (ctx: CanvasRenderingContext2D, player: THREE.Group) => void
   getObjectives?: (G: GameState) => ObjectivesResult
   openGate?: (G: GameState, setFlagFn: (k: string, v?: FlagValue) => void) => void
   applyWorldFromFlags?: (G: GameState) => void

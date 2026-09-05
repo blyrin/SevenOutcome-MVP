@@ -2,24 +2,19 @@ import './style.css'
 import * as THREE from 'three'
 import { auInit, playBgm } from './audio'
 import { initBoardEvents } from './board'
-import { initControlsEvents, path, scanning, setTimeScale, snapCamera, timeScale, timeScaleT, updatePlayer } from './controls'
+import {
+  initControlsEvents, path, scanning, setTimeScale, snapCamera, timeScale, timeScaleT, updatePlayer,
+} from './controls'
 import { initDialogueDOMEvents, startDialogue } from './dialogue'
 import { dlgOpen, G, initModalEvents, modalOpen, toast } from './state'
 import {
-  drawMinimap,
-  hideLoadingScreen,
-  initUIEvents,
-  refreshHUD,
-  refreshObjectives,
-  renderIntroCaseList,
-  setCaseSwitchHandler,
-  setupIntroFromManifest,
-  showLoadingScreen,
-  updateInv,
-  updateLoadingProgress,
+  hideLoadingScreen, initUIEvents, refreshHUD, refreshObjectives, renderIntroCaseList, setCaseSwitchHandler,
+  setupIntroFromManifest, showLoadingScreen, updateInv, updateLoadingProgress,
 } from './ui'
 import { $, dist2, lerp } from './utils'
-import { applyWorldFromFlags, camera, composer, ensureScanLabel, ITAB, labels, NPCS, player, renderer, scene } from './world'
+import {
+  applyWorldFromFlags, camera, composer, ensureScanLabel, ITAB, labels, NPCS, player, renderer, scene,
+} from './world'
 import { getCurrentCase, getManifest, getSelectedCaseId, loadCaseWithAssets } from './cases/caseManager'
 
 initModalEvents()
@@ -106,7 +101,6 @@ function animate(): void {
 
   updateInv(dt)
   composer.render()
-  drawMinimap()
 }
 
 async function launchCase(caseId: string): Promise<void> {
@@ -138,7 +132,6 @@ async function launchCase(caseId: string): Promise<void> {
   composer.render()
   await new Promise(r => requestAnimationFrame(r))
   composer.render()
-  drawMinimap()
 
   await new Promise(r => setTimeout(r, 220))
   await hideLoadingScreen()

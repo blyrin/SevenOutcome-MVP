@@ -18,32 +18,43 @@
   <div id="hud-tl">
     <div id="chapterTag">案件载入中…</div>
     <div id="areaName">调查现场</div>
-    <div id="objBox">
-      <div class="ot">当前调查进展</div>
-      <div id="objList"></div>
-    </div>
   </div>
   <div id="hud-tr">
-    <div class="mm-frame">
-      <canvas id="minimap" width="176" height="132"></canvas>
-      <div class="mm-cross"></div>
+    <button type="button" class="hud-btn" id="btnHudScan" title="环境感知 (Tab)">
+      <kbd>Tab</kbd><span>感知</span>
+    </button>
+    <button type="button" class="hud-btn" id="btnHudBoard" title="案情分析板 (B)">
+      <kbd>B</kbd><span>告示板</span>
+    </button>
+    <button type="button" class="hud-btn" id="btnHudInv" title="随身证物 (I)">
+      <kbd>I</kbd><span>证物</span>
+    </button>
+    <button type="button" class="hud-btn" id="btnHudHist" title="对话笔录 (H)">
+      <kbd>H</kbd><span>笔录</span>
+    </button>
+    <button type="button" class="hud-btn" id="btnHudMenu" title="系统菜单 (Esc)">
+      <kbd>Esc</kbd><span>菜单</span>
+    </button>
+  </div>
+  <div id="rotateScreen">
+    <div class="rotate-box">
+      <div class="rotate-phone">
+        <svg viewBox="0 0 24 24"
+             fill="none"
+             stroke="currentColor"
+             stroke-width="1.8"
+             stroke-linecap="round"
+             stroke-linejoin="round">
+          <rect x="4" y="2" width="16" height="20" rx="2" />
+          <line x1="11" y1="18" x2="13" y2="18" />
+        </svg>
+      </div>
+      <div class="rotate-title">请旋转屏幕至横屏</div>
+      <div class="rotate-desc">为保证 3D 现场勘查与深度推理的操作体验，请横持手机并开启全屏模式</div>
+      <button class="btn rotate-btn" id="btnRotateFullscreen" type="button">进入全屏</button>
     </div>
-    <div id="mm-title">区域俯瞰</div>
   </div>
   <div id="hud-bl">
-    <div id="portrait">
-      <svg class="badge-icon"
-           viewBox="0 0 24 24"
-           fill="none"
-           stroke="currentColor"
-           stroke-width="1.5"
-           stroke-linecap="square"
-           stroke-linejoin="miter">
-        <path d="M12 2l7 3.5v5.5c0 5-3.5 9-7 11-3.5-2-7-6-7-11V5.5L12 2z" />
-        <path d="M12 7v5" />
-        <path d="M10 15h4" />
-      </svg>
-    </div>
     <div id="pcinfo">
       <div id="pcname">侦探 · 科尔 <span id="lvlbadge">Lv.1</span></div>
       <div id="xpbar">
@@ -54,12 +65,10 @@
     </div>
   </div>
   <div id="hud-br">
-    <div class="hud-key"><kbd>左键</kbd><span>移动/调查</span></div>
-    <div class="hud-key"><kbd>Tab</kbd><span>感知</span></div>
-    <div class="hud-key"><kbd>B</kbd><span>告示板</span></div>
-    <div class="hud-key"><kbd>I</kbd><span>证物</span></div>
-    <div class="hud-key"><kbd>H</kbd><span>笔录</span></div>
-    <div class="hud-key"><kbd>Esc</kbd><span>菜单</span></div>
+    <div id="objBox">
+      <div class="ot">当前调查进展</div>
+      <div id="objList"></div>
+    </div>
   </div>
 
   <div id="toasts"></div>

@@ -330,6 +330,16 @@ export let hoverId: string | null = null
 export let scanning = false
 export const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
 
+export function setScanning(val: boolean): void {
+  scanning = val
+  const scanTint = $('scanTint')
+  const scanTip = $('scanTip')
+  const btnScan = $('btnHudScan')
+  if (scanTint) scanTint.classList.toggle('on', val)
+  if (scanTip) scanTip.classList.toggle('on', val)
+  if (btnScan) btnScan.classList.toggle('active', val)
+}
+
 export function pickInteract(e: MouseEvent | PointerEvent): string | null {
   mouseV.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1)
   ray.setFromCamera(mouseV, camera)
@@ -458,11 +468,7 @@ export function initControlsEvents(): void {
     }
     if (e.key === 'Tab') {
       e.preventDefault()
-      scanning = true
-      const scanTint = $('scanTint')
-      const scanTip = $('scanTip')
-      if (scanTint) scanTint.classList.add('on')
-      if (scanTip) scanTip.classList.add('on')
+      setScanning(true)
       return
     }
     if (modalOpen() || !G.started) {
@@ -488,13 +494,25 @@ export function initControlsEvents(): void {
       pendingI = null
     }
     if (k === 'b') {
-      openBoard()
+      if (uiStack[uiStack.length - 1] === 'boardModal') {
+        closeModal('boardModal')
+      } else {
+        openBoard()
+      }
     }
     if (k === 'i') {
-      openInv()
+      if (uiStack[uiStack.length - 1] === 'invModal') {
+        closeModal('invModal')
+      } else {
+        openInv()
+      }
     }
     if (k === 'h') {
-      openHist()
+      if (uiStack[uiStack.length - 1] === 'historyModal') {
+        closeModal('historyModal')
+      } else {
+        openHist()
+      }
     }
     if (k === 'm') {
       setMusic(!G.musicOn)
@@ -504,15 +522,69 @@ export function initControlsEvents(): void {
 
   addEventListener('keyup', e => {
     if (e.key === 'Tab') {
-      scanning = false
-      const scanTint = $('scanTint')
-      const scanTip = $('scanTip')
-      if (scanTint) scanTint.classList.remove('on')
-      if (scanTip) scanTip.classList.remove('on')
+      setScanning(false)
     }
     const k = e.key.toLowerCase()
     if ('wasd'.includes(k)) {
       wKeys[k] = 0
     }
   })
+
+  const btnScan = $('btnHudScan')
+  if (btnScan) {
+    btnScan.onclick = e => {
+      e.stopPropagation()
+      setScanning(!scanning)
+    }
+  }
+
+  const btnBoard = $('btnHudBoard')
+  if (btnBoard) {
+    btnBoard.onclick = e => {
+      e.stopPropagation()
+      if (uiStack[uiStack.length - 1] === 'boardModal') {
+        closeModal('boardModal')
+      } else {
+        openBoard()
+      }
+    }
+  }
+
+  const btnInv = $('btnHudInv')
+  if (btnInv) {
+    btnInv.onclick = e => {
+      e.stopPropagation()
+      if (uiStack[uiStack.length - 1] === 'invModal') {
+        closeModal('invModal')
+      } else {
+        openInv()
+      }
+    }
+  }
+
+  const btnHist = $('btnHudHist')
+  if (btnHist) {
+    btnHist.onclick = e => {
+      e.stopPropagation()
+      if (uiStack[uiStack.length - 1] === 'historyModal') {
+        closeModal('historyModal')
+      } else {
+        openHist()
+      }
+    }
+  }
+
+  const btnMenu = $('btnHudMenu')
+  if (btnMenu) {
+    btnMenu.onclick = e => {
+      e.stopPropagation()
+      if (modalOpen()) {
+        closeModal(uiStack[uiStack.length - 1])
+      } else if (dlgOpen()) {
+        endDialogue()
+      } else {
+        togglePause()
+      }
+    }
+  }
 }

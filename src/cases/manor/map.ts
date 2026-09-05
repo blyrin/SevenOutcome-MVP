@@ -1,8 +1,8 @@
 import type { GameState, InteractContext, NpcConfig, ObjectivesResult, SnowParticle, WorldContext } from '../../types'
 import * as THREE from 'three'
 import {
-  addLabel, blockRect, canvasTex, chalkOutline, lamp, lampGlowTex, makeChar, mat, scene, tagInteractive,
-  woodTex, wallPlasterTex, leatherTex, fabricTex,
+  addLabel, blockRect, canvasTex, chalkOutline, fabricTex, lamp, lampGlowTex, leatherTex, makeChar, mat, scene,
+  tagInteractive, wallPlasterTex, woodTex,
 } from '../../world'
 import { rand } from '../../utils'
 import { CLUE_TOTAL } from './clues'
@@ -240,10 +240,13 @@ function wallLantern(px: number, py: number, pz: number, dir: 'N' | 'S' | 'W' | 
   glowMesh.position.set(0, -0.06, 0.23)
   g.add(glowMesh)
 
-  if (dir === 'N') g.rotation.y = Math.PI
-  else if (dir === 'S') g.rotation.y = 0
-  else if (dir === 'W') g.rotation.y = -Math.PI / 2
-  else if (dir === 'E') g.rotation.y = Math.PI / 2
+  if (dir === 'N') {
+    g.rotation.y = Math.PI
+  } else if (dir === 'S') {
+    g.rotation.y = 0
+  } else if (dir === 'W') {
+    g.rotation.y = -Math.PI / 2
+  } else if (dir === 'E') g.rotation.y = Math.PI / 2
 
   g.position.set(px, py, pz)
   scene.add(g)
@@ -1185,7 +1188,8 @@ export function setupMap(worldCtx: WorldContext): void {
   boardM.position.set(0, 1.5, 0.02)
   boardGroup.add(boardM)
 
-  const boardFrame = new THREE.Mesh(new THREE.BoxGeometry(2.22, 1.62, 0.06), mat(0xd4af37, { roughness: 0.4, metalness: 0.8 }))
+  const boardFrame = new THREE.Mesh(new THREE.BoxGeometry(2.22, 1.62, 0.06),
+    mat(0xd4af37, { roughness: 0.4, metalness: 0.8 }))
   boardFrame.position.set(0, 1.5, 0)
   boardGroup.add(boardFrame)
 
@@ -1432,64 +1436,4 @@ export function getObjectives(G: GameState): ObjectivesResult {
   return { list: o }
 }
 
-const mmBase = document.createElement('canvas')
-mmBase.width = 176
-mmBase.height = 132
-;(() => {
-  const c = mmBase.getContext('2d')
-  if (!c) return
-  const sx = (x: number): number => ((x + 42) / 84) * 176
-  const sy = (z: number): number => ((z + 42) / 84) * 132
-  c.fillStyle = '#101318'
-  c.fillRect(0, 0, 176, 132)
 
-  c.fillStyle = '#222834'
-  c.fillRect(sx(-10), sy(-14), sx(8) - sx(-10), sy(16) - sy(-14))
-
-  c.fillStyle = '#342a38'
-  c.fillRect(sx(-5.5), sy(-12), sx(2) - sx(-5.5), sy(-6) - sy(-12))
-
-  const B: Array<[[number, number], [number, number], string]> = [
-    [[-26, -18], [-12, -4], '#45384e'],
-    [[-26, 4], [-12, 18], '#263a2c'],
-    [[12, 4], [26, 18], '#3d2e28'],
-    [[12, -18], [26, -4], '#28363a'],
-  ]
-  B.forEach(b => {
-    c.fillStyle = b[2]
-    c.fillRect(sx(b[0][0]), sy(b[0][1]), sx(b[1][0]) - sx(b[0][0]), sy(b[1][1]) - sy(b[0][1]))
-  })
-
-  c.strokeStyle = '#4a5468'
-  c.strokeRect(sx(-38), sy(-38), sx(38) - sx(-38), sy(38) - sy(-38))
-})()
-
-export function drawMinimap(mmc: CanvasRenderingContext2D, player: THREE.Group): void {
-  mmc.drawImage(mmBase, 0, 0)
-  const sx = (x: number): number => ((x + 42) / 84) * 176
-  const sy = (z: number): number => ((z + 42) / 84) * 132
-  const p = performance.now() / 400
-
-  for (const k in NPCS) {
-    mmc.fillStyle = 'rgba(212, 175, 55, 0.25)'
-    mmc.beginPath()
-    mmc.arc(sx(NPCS[k].pos[0]), sy(NPCS[k].pos[1]), 4.0, 0, 7)
-    mmc.fill()
-    mmc.fillStyle = '#d4af37'
-    mmc.beginPath()
-    mmc.arc(sx(NPCS[k].pos[0]), sy(NPCS[k].pos[1]), 2.2, 0, 7)
-    mmc.fill()
-  }
-
-  const wave = 3.5 + Math.sin(p) * 1.5
-  mmc.strokeStyle = 'rgba(210, 80, 80, 0.5)'
-  mmc.lineWidth = 1
-  mmc.beginPath()
-  mmc.arc(sx(-19.0), sy(-11), wave + 2, 0, 7)
-  mmc.stroke()
-
-  mmc.fillStyle = '#e85c5c'
-  mmc.beginPath()
-  mmc.arc(sx(-19.0), sy(-11), 2.5, 0, 7)
-  mmc.fill()
-}
