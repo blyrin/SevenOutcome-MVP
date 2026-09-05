@@ -1,5 +1,15 @@
 import type { DialogueLineItem, FormattedDialogueLine } from '../../types'
 
+export const NPC_VOICE_DESIGNS: Record<string, string> = {
+  sheriff: '四十多岁的中年男性，北方边陲小镇的治安警长，声线低沉浑厚、略带磨砺的烟嗓，语速沉稳从容，咬字干脆有力，充满执法者的威严与老练。',
+  coroner: '五十多岁的中年男性法医官，嗓音低沉平稳、质感清晰冰冷，语速缓慢严谨、条理分明，毫无情绪偏见，带着冷静克制、看透生死的理智与权威感。',
+  martha: '二十多岁的年轻女性，受尽磨难而心力交瘁的年轻妻子，音色纤细轻柔、略带干涩沙哑与微弱颤音，语速偏慢、轻声细语，带着深层疲惫、戒备与绝望后的苍凉。',
+  luke: '十八九岁的年轻男性，性格懦弱怯生的小铁匠学徒，声线偏高且青涩发紧，语速偏快、呼吸急促微颤，充满惊弓之鸟般的慌乱、恐慌与不知所措。',
+  pete: '六十岁左右的老年男性，嗜酒如命的底层市井老客，嗓音粗砺沙哑、带有明显的磨损感与老迈沧桑，语速絮叨、略带醉意拖腔，市井圆滑却又透着仗义。',
+  barrow: '四十多岁的中年男性，精明市侩的高利贷放贷商人，声线干瘦偏高、略带尖锐刻薄，语速连贯迅速、咄咄逼人，充满市侩的算计、自私与急躁狡黠。',
+  greta: '五十岁左右的中年女性，热情多话的市井邻舍大婶，嗓音饱满洪亮、充满生活烟火气，语速稍快、抑扬顿挫，语气带着市井妇人特有的同情、愤慨与绘声绘色。',
+}
+
 export const DIALOGUE_LINES: Record<string, DialogueLineItem> = {
   // 1. 警长 雷诺 (sheriff)
   sheriff_intro: {
@@ -440,7 +450,7 @@ export function line(id: string, ...params: Array<string | number>): FormattedDi
     sp: item.speaker,
     tx,
     lineId: item.id,
-    voiceUrl: `${ import.meta.env.BASE_URL }cases/blacksmith/audio/voice/${ item.id }.mp3`,
+    voiceUrl: `${ import.meta.env.BASE_URL }cases/blacksmith/audio/voice/${ item.id }.ogg`,
   }
 }
 
@@ -451,7 +461,7 @@ export function findVoiceUrl(text: string): string | null {
   for (const item of Object.values(DIALOGUE_LINES)) {
     const raw = typeof item.text === 'function' ? item.text() : item.text
     if (text === raw || (raw && text.includes(raw.slice(0, 14)))) {
-      return `${ import.meta.env.BASE_URL }cases/blacksmith/audio/voice/${ item.id }.mp3`
+      return `${ import.meta.env.BASE_URL }cases/blacksmith/audio/voice/${ item.id }.ogg`
     }
   }
   return null

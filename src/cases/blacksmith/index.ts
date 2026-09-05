@@ -1,5 +1,5 @@
 import { CLUE_TOTAL, CLUES, itemMesh, ITEMS, questState } from './clues'
-import { DIALOGUE_LINES, findVoiceUrl, line } from './dialogueLines'
+import { DIALOGUE_LINES, findVoiceUrl, line, NPC_VOICE_DESIGNS } from './dialogueLines'
 import { DLG, NPC_PROFILES } from './dialogueData'
 import { CORRECT, getDeduceText, SLOTS, WRONGMSG } from './board'
 import { getEpilogueData, getVerdictCards, TIMELINE } from './trial'
@@ -26,7 +26,7 @@ export const caseBlacksmith: CaseDefinition = {
     startHint: '点击地面移动 · 按住 Tab 感知周围交互目标',
   },
   audio: {
-    bgm: `${ import.meta.env.BASE_URL }cases/blacksmith/audio/bgm.mp3`,
+    bgm: `${ import.meta.env.BASE_URL }cases/blacksmith/audio/bgm.ogg`,
     voiceDir: `${ import.meta.env.BASE_URL }cases/blacksmith/audio/voice/`,
   },
   clues: CLUES,
@@ -38,6 +38,7 @@ export const caseBlacksmith: CaseDefinition = {
     profiles: NPC_PROFILES,
     trees: DLG,
     lines: DIALOGUE_LINES,
+    voiceDesigns: NPC_VOICE_DESIGNS,
     findVoiceUrl,
     line,
   },

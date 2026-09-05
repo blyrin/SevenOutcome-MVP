@@ -17,7 +17,7 @@ let voiceAudio: HTMLAudioElement | null = null
 
 function getCaseBgmUrl(): string {
   const curCase = getCurrentCase()
-  return curCase?.audio?.bgm || `${ import.meta.env.BASE_URL }cases/blacksmith/audio/bgm.mp3`
+  return curCase?.audio?.bgm || `${ import.meta.env.BASE_URL }cases/blacksmith/audio/bgm.ogg`
 }
 
 function fadeBgm(target: number, duration = 1200): void {

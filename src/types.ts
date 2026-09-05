@@ -151,6 +151,7 @@ export interface DialogueLineItem {
   npc: string
   speaker: string
   voice?: string
+  voiceDesign?: string
   prompt?: string
   text: string | ((...args: Array<string | number>) => string)
   tts?: string
@@ -167,6 +168,7 @@ export interface DialogueDefinition {
   profiles: Record<string, NpcProfile>
   trees: Record<string, () => DialogueTree>
   lines?: Record<string, DialogueLineItem>
+  voiceDesigns?: Record<string, string>
   findVoiceUrl?: (text: string) => string | null
   line?: (id: string, ...args: Array<string | number>) => FormattedDialogueLine
 }
