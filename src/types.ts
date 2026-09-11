@@ -150,7 +150,6 @@ export interface DialogueLineItem {
   id: string
   npc: string
   speaker: string
-  voice?: string
   voiceDesign?: string
   prompt?: string
   text: string | ((...args: Array<string | number>) => string)

@@ -43,14 +43,16 @@ function getAvailableCases() {
 }
 
 function resolveVoicePrompt(item, npcVoiceDesigns) {
+  const isEn = /[a-zA-Z]/.test(item.prompt || '') && !/[\u4e00-\u9fa5]/.test(item.prompt || '')
+  const sep = isEn ? ' Delivery / mood: ' : ' 当前语气状态：'
   if (item.voiceDesign) {
-    return item.prompt ? `${ item.voiceDesign } 当前语气状态：${ item.prompt }` : item.voiceDesign
+    return item.prompt ? `${ item.voiceDesign }${ sep }${ item.prompt }` : item.voiceDesign
   }
   const baseDesign = (item.npc && npcVoiceDesigns[item.npc]) || ''
   if (baseDesign && item.prompt) {
-    return `${ baseDesign } 当前语气状态：${ item.prompt }`
+    return `${ baseDesign }${ sep }${ item.prompt }`
   }
-  return baseDesign || item.prompt || '普通成年人音色，语气自然平稳。'
+  return baseDesign || item.prompt || (isEn ? 'Natural adult voice, steady and clear.' : '普通成年人音色，语气自然平稳。')
 }
 
 function convertToOgg(srcPath, destPath) {
