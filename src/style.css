@@ -104,12 +104,6 @@ canvas {
   vertical-align: 1px;
 }
 
-.wlabel.scan {
-  border-color: rgba(255, 255, 255, 0.35);
-  background: rgba(14, 20, 26, 0.95);
-  color: #fff;
-}
-
 /* ── HUD：各个方位容器 ───────── */
 #hud-tl,
 #hud-tr,
@@ -262,7 +256,6 @@ body.dlg #hud-tr {
   font-size: 10px;
   border: 1px solid var(--border-dim);
   padding: 0 5px;
-  cursor: pointer;
 }
 
 #xpbar {
@@ -317,7 +310,6 @@ body.dlg #hud-tr {
   font-size: 10.5px;
   color: var(--txt-bright);
   pointer-events: auto;
-  cursor: pointer;
   text-decoration: underline;
 }
 
@@ -357,7 +349,6 @@ body.dlg #hud-tr {
   border: 1px solid var(--border-dim);
   padding: 6px 10px;
   min-height: 34px;
-  cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
@@ -499,7 +490,6 @@ body.cinematic #hud-br {
 body.cinematic #cinematicOverlay {
   opacity: 1;
   pointer-events: auto;
-  cursor: pointer;
 }
 
 .cinematic-content {
@@ -777,7 +767,6 @@ body.cinematic #cinematicOverlay {
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.85);
   display: flex;
   flex-direction: column;
-  cursor: pointer;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -861,7 +850,6 @@ body.dlg #dlgBox {
   background: transparent;
   border: none;
   border-left: 2px solid transparent;
-  cursor: pointer;
   transition: all 0.15s ease;
   color: #bdb7ab;
   display: flex;
@@ -950,7 +938,6 @@ body.dlg #dlgBox {
   position: absolute;
   top: 10px;
   right: 14px;
-  cursor: pointer;
   color: var(--txt-dim);
   font-size: 15px;
   z-index: 2;
@@ -970,7 +957,6 @@ body.dlg #dlgBox {
   color: var(--txt-bright);
   font-size: 12px;
   letter-spacing: 1px;
-  cursor: pointer;
   transition: all 0.15s ease;
   font-family: inherit;
 }
@@ -1064,7 +1050,6 @@ body.dlg #dlgBox {
   background: var(--paper-bg);
   color: var(--paper-txt);
   padding: 8px 10px;
-  cursor: pointer;
   border: 1px solid var(--paper-border);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
   transition: all 0.15s ease;
@@ -1148,7 +1133,6 @@ body.dlg #dlgBox {
   align-items: center;
   justify-content: center;
   padding: 8px;
-  cursor: pointer;
   transition: all 0.15s;
   position: relative;
   min-height: 98px;
@@ -1380,7 +1364,6 @@ body.dlg #dlgBox {
   border: 1px solid var(--border-dim);
   background: rgba(255, 255, 255, 0.015);
   padding: 10px 12px;
-  cursor: pointer;
   transition: all 0.15s;
   display: flex;
   align-items: center;
@@ -1474,7 +1457,6 @@ body.dlg #dlgBox {
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  cursor: pointer;
   transition: all 0.15s;
 }
 
@@ -1556,7 +1538,6 @@ body.dlg #dlgBox {
   background: #121620;
   border: 1px solid var(--border-dim);
   color: var(--txt-bright);
-  cursor: pointer;
   font-size: 13px;
 }
 
@@ -1849,7 +1830,6 @@ body.dlg #dlgBox {
   background: rgba(255, 255, 255, 0.015);
   border: 1px solid var(--border-dim);
   padding: 14px 16px;
-  cursor: pointer;
   transition: all 0.15s ease;
   display: flex;
   flex-direction: column;

@@ -7,7 +7,7 @@ import {
 } from './state'
 import { openHist, openInv, refreshObjectives, togglePause } from './ui'
 import { $, clamp, dist2, lerp } from './utils'
-import { camera, findPath, interactMeshes, isBlocked, ITAB, NPCS, player, renderer, toG, zoneAt } from './world'
+import { applyScanGlow, camera, findPath, interactMeshes, isBlocked, ITAB, NPCS, player, renderer, toG, zoneAt } from './world'
 import { getCurrentCase } from './cases/caseManager'
 import {
   camOff, camZoom, focusInspection, isCutsceneActive, isInspectionActive, setCamZoom, skipCutscene, snapCamera,
@@ -376,6 +376,7 @@ export const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
 
 export function setScanning(val: boolean): void {
   scanning = val
+  applyScanGlow(val)
   const scanTint = $('scanTint')
   const scanTip = $('scanTip')
   const btnScan = $('btnHudScan')
@@ -458,7 +459,6 @@ export function initControlsEvents(): void {
       return
     }
     hoverId = pickInteract(e)
-    renderer.domElement.style.cursor = hoverId ? 'pointer' : 'default'
     for (const k in NPCS) {
       const ring = NPCS[k]?.ring
       if (ring) {

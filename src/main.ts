@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { auInit, playBgm } from './audio'
 import { initBoardEvents } from './board'
 import {
-  initControlsEvents, path, scanning, setTimeScale, snapCamera, timeScale, timeScaleT, updatePlayer,
+  initControlsEvents, path, setScanning, setTimeScale, snapCamera, timeScale, timeScaleT, updatePlayer,
 } from './controls'
 import { initDialogueDOMEvents, startDialogue } from './dialogue'
 import {
@@ -16,7 +16,7 @@ import {
 } from './ui'
 import { $, dist2, lerp } from './utils'
 import {
-  applyWorldFromFlags, camera, composer, ensureScanLabel, ITAB, labels, NPCS, player, renderer, scene,
+  applyWorldFromFlags, camera, composer, labels, NPCS, player, pulseScanGlow, renderer, scene,
 } from './world'
 import { getCurrentCase, getManifest, getSelectedCaseId, loadCaseWithAssets } from './cases/caseManager'
 
@@ -70,23 +70,7 @@ function animate(): void {
     curCase.map.update(dt, now)
   }
 
-  for (const id in ITAB) {
-    const it = ITAB[id]
-    if (it.hidden || it.kind === 'npc') {
-      continue
-    }
-    const el = ensureScanLabel(id)
-    if (!el) {
-      continue
-    }
-    if (scanning && G.started) {
-      const p = it.mesh.getWorldPosition(new THREE.Vector3())
-      const dd = dist2(player.position.x, player.position.z, p.x, p.z)
-      el.style.opacity = dd < 16 ? '1' : '0'
-    } else {
-      el.style.opacity = '0'
-    }
-  }
+  pulseScanGlow(now)
 
   labels.forEach(L => {
     let show = !isCutsceneActive() && !dlgOpen() && !isInspectionActive() && L.cond && L.cond()
@@ -116,6 +100,8 @@ async function launchCase(caseId: string): Promise<void> {
   if (intro) {
     intro.classList.add('off')
   }
+
+  setScanning(false)
 
   showLoadingScreen(manifest.title, manifest.meta.caseCode || 'CASE FILE', manifest.subtitle || '雾杉镇疑案')
 

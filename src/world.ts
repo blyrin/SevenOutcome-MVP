@@ -1554,28 +1554,55 @@ export function addLabel(
   return el
 }
 
-export const scanLabels: Record<string, HTMLElement> = {}
+const SCAN_GLOW_COLORS: Record<string, number> = {
+  clue: 0xe05a5a,
+  npc: 0xd9a441,
+  item: 0x7fd0c4,
+}
 
-export function ensureScanLabel(id: string): HTMLElement | null {
-  if (scanLabels[id]) {
-    return scanLabels[id]
+const scanGlowSaved: Array<{ m: THREE.MeshStandardMaterial; e: THREE.Color; i: number }> = []
+
+export function applyScanGlow(on: boolean): void {
+  if (!on) {
+    scanGlowSaved.forEach(s => {
+      s.m.emissive.copy(s.e)
+      s.m.emissiveIntensity = s.i
+    })
+    scanGlowSaved.length = 0
+    return
   }
-  const it = ITAB[id]
-  if (!it) {
-    return null
+  if (scanGlowSaved.length) {
+    return
   }
-  const col = it.kind === 'npc' ? '#d9a441' : it.kind === 'clue' ? '#e05a5a' : it.kind === 'item'
-    ? '#7fd0c4'
-    : '#9aa4b4'
-  const el = addLabel(
-    () => it.mesh.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, it.kind === 'npc' ? 0 : 1.1, 0)),
-    `<span class="dot" style="background:${ col }"></span>${ it.name }`,
-    'scan',
-    () => false,
-  )
-  el.style.opacity = '0'
-  scanLabels[id] = el
-  return el
+  for (const id in ITAB) {
+    const it = ITAB[id]
+    if (it.hidden) {
+      continue
+    }
+    const col = SCAN_GLOW_COLORS[it.kind] || 0x9aa4b4
+    it.mesh.traverse(o => {
+      const mesh = o as THREE.Mesh
+      const mats = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : []
+      mats.forEach(m => {
+        if (!(m instanceof THREE.MeshStandardMaterial) || scanGlowSaved.some(s => s.m === m)) {
+          return
+        }
+        scanGlowSaved.push({ m, e: m.emissive.clone(), i: m.emissiveIntensity })
+        m.emissive.setHex(col)
+        m.emissiveIntensity = 0.5
+      })
+    })
+  }
+}
+
+export function pulseScanGlow(now: number): void {
+  if (!scanGlowSaved.length) {
+    return
+  }
+  const k = 0.42 + Math.sin(now / 240) * 0.18
+  scanGlowSaved.forEach(s => {
+    s.m.emissiveIntensity = k
+  })
 }
 
 export function clearWorldObjects(): void {
@@ -1585,9 +1612,7 @@ export function clearWorldObjects(): void {
     }
   })
   labels.length = 0
-  for (const k in scanLabels) {
-    delete scanLabels[k]
-  }
+  scanGlowSaved.length = 0
   for (const k in ITAB) {
     delete ITAB[k]
   }
