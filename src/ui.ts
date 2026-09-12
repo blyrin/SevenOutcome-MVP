@@ -256,6 +256,12 @@ export function setCaseSwitchHandler(fn: (caseId: string) => Promise<void>): voi
   caseSwitchHandler = fn
 }
 
+export function switchToCase(caseId: string): void {
+  if (caseSwitchHandler) {
+    void caseSwitchHandler(caseId)
+  }
+}
+
 export function showLoadingScreen(title: string, badge?: string, sub?: string): void {
   const ls = $('loadingScreen')
   if (!ls) return

@@ -2,9 +2,9 @@ import { sfx } from './audio'
 import { openBoard } from './board'
 import { setTimeScaleT } from './controls'
 import { closeModal, confirmBox, G, openModal, toast } from './state'
-import { openCaseModal, refreshObjectives } from './ui'
+import { openCaseModal, refreshObjectives, switchToCase } from './ui'
 import { $ } from './utils'
-import { getCurrentCase, loadCase } from './cases/caseManager'
+import { getCurrentCase } from './cases/caseManager'
 
 export function openTrial(wrongPath: boolean): void {
   closeModal('boardModal')
@@ -125,7 +125,7 @@ export function showEpilogue(v: string): void {
           if (epi) epi.classList.remove('on')
           st.classList.remove('on')
           setTimeScaleT(1)
-          loadCase('manor')
+          switchToCase('manor')
           toast('已开启第二章 · 鸦羽庄园的秘毒')
         }
       }

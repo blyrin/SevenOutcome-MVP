@@ -141,11 +141,18 @@ async function launchCase(caseId: string): Promise<void> {
         startDialogue(startNpc)
       }, 200)
     }
-    setTimeout(() => {
+    let hintWait = 0
+    const showStartHint = (): void => {
+      if ((dlgOpen() || modalOpen()) && hintWait < 10) {
+        hintWait++
+        setTimeout(showStartHint, 1500)
+        return
+      }
       if (!path.length) {
         toast(startHint)
       }
-    }, 400)
+    }
+    setTimeout(showStartHint, 600)
   }
 
   if (caseDef.cutscene && caseDef.cutscene.shots && caseDef.cutscene.shots.length > 0) {

@@ -10,6 +10,16 @@ import type { AttrKey, SlotId } from './types'
 
 let selClue: string | null = null
 
+function invalidateDeduction(): void {
+  if (G.flags.deductionCorrect) {
+    delete G.flags.deductionCorrect
+    const boardMsg = $('boardMsg')
+    if (boardMsg) {
+      boardMsg.textContent = '推论组合已变动，证据链需重新验证。'
+    }
+  }
+}
+
 export function openBoard(): void {
   if (modalOpen()) {
     return
@@ -87,6 +97,7 @@ export function renderBoard(): void {
         if (G.board[s.id]) {
           G.board[s.id] = null
           sfx('click')
+          invalidateDeduction()
           renderBoard()
           return
         }
@@ -114,6 +125,7 @@ export function renderBoard(): void {
         }
         G.board[s.id] = selClue
         sfx('pickup')
+        invalidateDeduction()
         renderBoard()
       }
       sg.appendChild(d)
@@ -138,6 +150,7 @@ export function initBoardEvents(): void {
     btnClear.onclick = () => {
       G.board = { killer: null, weapon: null, motive: null, method: null }
       sfx('click')
+      invalidateDeduction()
       renderBoard()
     }
   }

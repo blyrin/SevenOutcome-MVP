@@ -687,7 +687,7 @@ export function lamp(x: number, z: number): void {
   blockRect(x - .3, z - .3, x + .3, z + .3, 0)
 }
 
-export function barrel(x: number, z: number, s = 1): void {
+export function barrel(x: number, z: number, s = 1): THREE.Group {
   const bg = new THREE.Group()
   const bMat = mat(0x523d2b, { map: woodTex, roughness: 0.85, metalness: 0.08 })
   const hoopMat = mat(0x22262d, { roughness: 0.5, metalness: 0.75 })
@@ -738,6 +738,7 @@ export function barrel(x: number, z: number, s = 1): void {
   bg.position.set(x, 0, z)
   scene.add(bg)
   blockRect(x - .45 * s, z - .45 * s, x + .45 * s, z + .45 * s, 0)
+  return bg
 }
 
 export function crate(x: number, z: number, s = 1): void {

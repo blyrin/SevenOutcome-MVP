@@ -157,6 +157,9 @@ export function addClue(id: string, silent?: boolean): void {
   }
   G.clues.push(id)
   const curCase = getCurrentCase()
+  if (curCase && curCase.map && curCase.map.applyWorldFromFlags) {
+    curCase.map.applyWorldFromFlags(G)
+  }
   const c = curCase && curCase.clues ? curCase.clues[id] : null
   if (!silent && c) {
     sfx('clue')

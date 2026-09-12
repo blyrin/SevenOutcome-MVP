@@ -106,6 +106,9 @@ export function openGate(G?: GameState, setFlagFn?: (k: string, v?: FlagValue) =
   if (gateMesh && gateMesh.parent) {
     scene.remove(gateMesh)
   }
+  if (ITAB.gate) {
+    ITAB.gate.hidden = true
+  }
 }
 
 let mistGeo: THREE.BufferGeometry | null = null
@@ -160,6 +163,44 @@ function createDetailedAnvil() {
   g.add(step)
 
   return g
+}
+
+const INDOOR_RECTS: Array<[number, number, number, number]> = [
+  [-26, -20, -14, -10],
+  [-24, 8, -16, 16],
+  [10, -18, 24, -8],
+  [14, 8, 24, 16],
+]
+
+function underIndoor(x: number, z: number): boolean {
+  for (const r of INDOOR_RECTS) {
+    if (x >= r[0] && x <= r[2] && z >= r[1] && z <= r[3]) {
+      return true
+    }
+  }
+  return false
+}
+
+function fence(x1: number, z1: number, x2: number, z2: number): void {
+  const railM = mat(0x2c251f, { map: woodTex, roughness: 0.9 })
+  const postM = mat(0x231c16, { map: woodTex, roughness: 0.92 })
+  const len = Math.hypot(x2 - x1, z2 - z1)
+  const n = Math.max(1, Math.round(len / 2))
+  const ang = Math.atan2(x2 - x1, z2 - z1)
+  for (let i = 0; i <= n; i++) {
+    const t = i / n
+    const post = new THREE.Mesh(new THREE.BoxGeometry(.09, 1.05, .09), postM)
+    post.position.set(x1 + (x2 - x1) * t, .52, z1 + (z2 - z1) * t)
+    post.castShadow = true
+    scene.add(post)
+  }
+  for (const ry of [.42, .82]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(.05, .08, len), railM)
+    rail.position.set((x1 + x2) / 2, ry, (z1 + z2) / 2)
+    rail.rotation.y = ang
+    rail.castShadow = true
+    scene.add(rail)
+  }
 }
 
 export function setupMap(worldCtx: WorldContext): void {
@@ -426,7 +467,7 @@ export function setupMap(worldCtx: WorldContext): void {
   hammerBlood.position.z = .26
   hammerM.add(hammerBlood)
 
-  hammerM.position.set(-18.8, 0.18, -13.4)
+  hammerM.position.set(-18.8, 0.09, -13.4)
   hammerM.rotation.y = .8
   scene.add(hammerM)
   tagInteractive(hammerM, 'hammer', '染血的铁锤', 'clue')
@@ -469,9 +510,12 @@ export function setupMap(worldCtx: WorldContext): void {
   scene.add(letterM)
   tagInteractive(letterM, 'letter', '桌上的信件', 'clue')
 
-  barrel(-25, -11.2)
-  barrel(-24.2, -11.6, .9)
-  barrel(-25.2, -12.1, .85)
+  const barrelA = barrel(-25, -11.2)
+  const barrelB = barrel(-24.2, -11.6, .9)
+  const barrelC = barrel(-25.2, -12.1, .85)
+  tagInteractive(barrelA, 'barrels', '成堆的木桶', 'env')
+  tagInteractive(barrelB, 'barrels', '成堆的木桶', 'env')
+  tagInteractive(barrelC, 'barrels', '成堆的木桶', 'env')
 
   const apronTex = canvasTex(256, 256, (x, w, h) => {
     x.fillStyle = '#6a554a'
@@ -500,11 +544,10 @@ export function setupMap(worldCtx: WorldContext): void {
   apronM.rotation.z = 1
   apronM.position.set(-24.6, 0.13, -11.4)
   scene.add(apronM)
-  tagInteractive(apronM, 'barrels', '成堆的木桶', 'env')
 
   box(1.9, .55, 1.2, 0x3a3128, -15.4, .28, -11.4)
   blockRect(-15.4 - .95, -11.4 - .6, -15.4 + .95, -11.4 + .6, 0)
-  const mbox = box(.5, .35, .4, 0x5a4a2e, -15.2, .28, -11.1)
+  const mbox = box(.5, .35, .4, 0x5a4a2e, -15.2, .73, -11.1)
   tagInteractive(mbox, 'moneybox', '床底的钱匣', 'env')
 
   wallRects(buildingShell(-24, 8, -16, 16, 3, 0x44404e, { side: 'N', a: -21.5, b: -18.5 }))
@@ -543,6 +586,11 @@ export function setupMap(worldCtx: WorldContext): void {
   blockRect(25.4, 2, 26, 14, 0)
   blockRect(30.5, -16, 31.2, -2, 0)
   blockRect(30.5, 2, 31.2, 14, 0)
+  fence(25.7, -16, 25.7, -2.2)
+  fence(25.7, 2.2, 25.7, 14)
+  fence(30.85, -16, 30.85, -12.6)
+  fence(30.85, -5.4, 30.85, -2.2)
+  fence(30.85, 2.2, 30.85, 14)
   crate(29.5, 6.5)
   crate(26.8, -6, .8)
   barrel(27.2, -9, .8)
@@ -1043,10 +1091,12 @@ export function updateAtmosphere(dt: number, now: number): void {
     const idx = i * 3
     rPos[idx + 1] -= rainVel[i] * dt
     rPos[idx] -= dt * 2.8
-    if (rPos[idx + 1] < 0.08) {
-      rPos[idx] = rand(-40, 40)
+    if (rPos[idx + 1] < 0.08 || (rPos[idx + 1] < 3.5 && underIndoor(rPos[idx], rPos[idx + 2]))) {
+      do {
+        rPos[idx] = rand(-40, 40)
+        rPos[idx + 2] = rand(-28, 28)
+      } while (underIndoor(rPos[idx], rPos[idx + 2]))
       rPos[idx + 1] = rand(16, 24)
-      rPos[idx + 2] = rand(-28, 28)
     }
   }
   rPosAttr.needsUpdate = true
@@ -1060,8 +1110,10 @@ export function updateAtmosphere(dt: number, now: number): void {
     if (d.age >= d.life) {
       d.age = 0
       d.life = rand(0.2, 0.45)
-      spPos[idx] = rand(-38, 38)
-      spPos[idx + 2] = rand(-26, 26)
+      do {
+        spPos[idx] = rand(-38, 38)
+        spPos[idx + 2] = rand(-26, 26)
+      } while (underIndoor(spPos[idx], spPos[idx + 2]))
     }
   }
   spPosAttr.needsUpdate = true
@@ -1129,12 +1181,13 @@ export function applyWorldFromFlags(G: GameState): void {
     return
   }
   const hasFlag = (k: string): boolean => !!G.flags[k]
-  if (hasFlag('clue_hammer')) {
+  if (G.clues.includes('clue_hammer')) {
     if (ITAB.hammer) ITAB.hammer.hidden = true
     if (hammerM) hammerM.visible = false
   }
   if (hasFlag('gateOpen')) {
     if (gateMesh && gateMesh.parent) scene.remove(gateMesh)
+    if (ITAB.gate) ITAB.gate.hidden = true
   }
   if (G.clues.includes('clue_letter')) {
     if (ITAB.letter) ITAB.letter.hidden = true

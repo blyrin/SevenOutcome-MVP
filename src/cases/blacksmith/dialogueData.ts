@@ -2,7 +2,6 @@ import { line } from './dialogueLines'
 import { addClue, checkFX, closeModal, G, gainXP, removeItem, setFlag } from '../../state'
 import { openTrial } from '../../trial'
 import { refreshObjectives } from '../../ui'
-import { openGate } from './map'
 import type { DialogueTree, NpcProfile } from '../../types'
 
 export const NPC_PROFILES: Record<string, NpcProfile> = {
@@ -316,10 +315,9 @@ export const DLG: Record<string, () => DialogueTree> = {
             {
               t: '（交出钱包）', cond: () => G.inventory.includes('wallet'), act: () => {
                 removeItem('wallet')
-                f.walletReturned = 1
-                gainXP(40, '支线 · 醉汉的钱包')
+                setFlag('walletReturned')
                 setFlag('peteTip')
-                openGate()
+                gainXP(40, '支线 · 醉汉的钱包')
               }, next: 'c',
             },
             { t: '昨晚你看见什么了吗？', cond: () => !f.walletReturned, next: 'd' },
@@ -335,7 +333,6 @@ export const DLG: Record<string, () => DialogueTree> = {
             {
               t: '（记下证词）', act: () => {
                 addClue('clue_pete')
-                openGate()
               }, next: null,
             }],
         },
