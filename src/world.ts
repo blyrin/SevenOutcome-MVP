@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js'
@@ -15,6 +15,7 @@ renderer.setSize(innerWidth, innerHeight)
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
 renderer.shadowMap.enabled = true
 renderer.shadowMap.type = THREE.PCFSoftShadowMap
+renderer.shadowMap.autoUpdate = false
 renderer.outputEncoding = THREE.sRGBEncoding
 renderer.toneMapping = THREE.ACESFilmicToneMapping
 renderer.toneMappingExposure = 1.08
@@ -28,8 +29,24 @@ export const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 
 camera.position.set(0, 28, 26)
 
 export const composer = new EffectComposer(renderer)
-const renderPass = new RenderPass(scene, camera)
-composer.addPass(renderPass)
+const ssaoSize = renderer.getDrawingBufferSize(new THREE.Vector2())
+const ssaoPass = new SSAOPass(scene, camera, ssaoSize.x, ssaoSize.y)
+ssaoPass.kernelRadius = 0.7
+ssaoPass.minDistance = 0.0002
+ssaoPass.maxDistance = 0.02
+const ssaoDepthPass = ssaoPass.renderOverride.bind(ssaoPass)
+ssaoPass.renderOverride = (renderer, overrideMaterial, renderTarget, clearColor, clearAlpha): void => {
+  const hidden: THREE.Object3D[] = []
+  scene.traverse((o) => {
+    if (o.userData.noAO && o.visible) {
+      o.visible = false
+      hidden.push(o)
+    }
+  })
+  ssaoDepthPass(renderer, overrideMaterial, renderTarget, clearColor, clearAlpha)
+  for (const o of hidden) o.visible = true
+}
+composer.addPass(ssaoPass)
 
 const bloomPass = new UnrealBloomPass(
   new THREE.Vector2(innerWidth, innerHeight),
@@ -69,17 +86,6 @@ scene.add(new THREE.HemisphereLight(0x384d72, 0x161310, .54))
 scene.add(new THREE.AmbientLight(0x1a2232, 0.28))
 const moon = new THREE.DirectionalLight(0xa4bcd8, .86)
 moon.position.set(-24, 34, 14)
-moon.castShadow = true
-moon.shadow.mapSize.set(2048, 2048)
-moon.shadow.bias = -0.0003
-moon.shadow.normalBias = 0.02
-const sc = moon.shadow.camera
-sc.left = -46
-sc.right = 46
-sc.top = 46
-sc.bottom = -46
-sc.near = 1
-sc.far = 120
 scene.add(moon)
 
 const rim = new THREE.DirectionalLight(0x3e5276, 0.32)
@@ -602,6 +608,13 @@ export const lampGlowTex = canvasTex(128, 128, (x, w, h) => {
   x.fillRect(0, 0, w, h)
 })
 
+export function pointLightShadow(l: THREE.PointLight): void {
+  l.castShadow = true
+  l.shadow.mapSize.set(512, 512)
+  l.shadow.bias = -0.0005
+  l.shadow.normalBias = 0.02
+}
+
 export const lampPositions: Array<[number, number]> = []
 
 export function lamp(x: number, z: number): void {
@@ -655,6 +668,7 @@ export function lamp(x: number, z: number): void {
 
   const pl = new THREE.PointLight(0xffa84a, 1.25, 14.5, 2)
   pl.position.y = 3.45
+  pointLightShadow(pl)
   g.add(pl)
 
   const pool = new THREE.Mesh(
@@ -669,6 +683,7 @@ export function lamp(x: number, z: number): void {
   )
   pool.rotation.x = -Math.PI / 2
   pool.position.y = .035
+  pool.userData.noAO = true
   g.add(pool)
 
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -680,6 +695,7 @@ export function lamp(x: number, z: number): void {
   }))
   halo.position.y = 3.52
   halo.scale.set(1.9, 1.9, 1)
+  halo.userData.noAO = true
   g.add(halo)
 
   g.position.set(x, 0, z)
@@ -969,6 +985,7 @@ export function chalkOutline(x: number, z: number, y = 0.128): THREE.Mesh {
   )
   blood.rotation.x = -Math.PI / 2
   blood.position.set(x + .35, y - 0.003, z - .25)
+  blood.userData.noAO = true
   scene.add(blood)
 
   const chalkMesh = new THREE.Mesh(
@@ -982,6 +999,7 @@ export function chalkOutline(x: number, z: number, y = 0.128): THREE.Mesh {
   )
   chalkMesh.rotation.x = -Math.PI / 2
   chalkMesh.position.set(x, y, z)
+  chalkMesh.userData.noAO = true
   scene.add(chalkMesh)
 
   tagInteractive(chalkMesh, 'body', '死者遗体痕迹', 'clue')
@@ -1476,12 +1494,6 @@ export function makeChar(
     basket.castShadow = true
     leftArm.add(basket)
   }
-
-  const sh = new THREE.Mesh(new THREE.CircleGeometry(.44, 16),
-    new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: .34, depthWrite: false }))
-  sh.rotation.x = -Math.PI / 2
-  sh.position.y = .028
-  g.add(sh)
 
   g.userData.bob = Math.random() * 6
   scene.add(g)

@@ -3,8 +3,8 @@ import type {
 } from '../../types'
 import * as THREE from 'three'
 import {
-  addLabel, blockRect, canvasTex, chalkOutline, fabricTex, lamp, lampGlowTex, leatherTex, makeChar, mat, scene,
-  tagInteractive, wallPlasterTex, woodTex,
+  addLabel, blockRect, canvasTex, chalkOutline, fabricTex, lamp, lampGlowTex, leatherTex, makeChar, mat,
+  pointLightShadow, scene, tagInteractive, wallPlasterTex, woodTex,
 } from '../../world'
 import { rand } from '../../utils'
 import { CLUE_TOTAL } from './clues'
@@ -279,6 +279,7 @@ function wallLantern(px: number, py: number, pz: number, dir: 'N' | 'S' | 'W' | 
       depthWrite: false,
     }))
   glowMesh.position.set(0, -0.06, 0.23)
+  glowMesh.userData.noAO = true
   g.add(glowMesh)
 
   if (dir === 'N') {
@@ -1253,34 +1254,42 @@ export function setupMap(worldCtx: WorldContext): void {
 
   hallChandelier = new THREE.PointLight(0xffe6b8, 1.85, 24, 1.4)
   hallChandelier.position.set(-2.0, 5.6, 3.5)
+  pointLightShadow(hallChandelier)
   scene.add(hallChandelier)
 
   foyerLight = new THREE.PointLight(0xffbe76, 1.5, 16, 1.5)
   foyerLight.position.set(-2.0, 3.6, 14.5)
+  pointLightShadow(foyerLight)
   scene.add(foyerLight)
 
   pianoLight = new THREE.PointLight(0xffe4aa, 1.6, 16, 1.5)
   pianoLight.position.set(-2.0, 5.2, -9.5)
+  pointLightShadow(pianoLight)
   scene.add(pianoLight)
 
   studyLight = new THREE.PointLight(0xffa855, 2.2, 16, 1.5)
   studyLight.position.set(-19.0, 5.4, -11.0)
+  pointLightShadow(studyLight)
   scene.add(studyLight)
 
   fireLight = new THREE.PointLight(0xff5511, 2.6, 13, 1.6)
   fireLight.position.set(-19.0, 3.6, -16.5)
+  pointLightShadow(fireLight)
   scene.add(fireLight)
 
   greenhouseLight = new THREE.PointLight(0x7fe3aa, 1.4, 16, 1.5)
   greenhouseLight.position.set(-19.0, 3.2, 11.0)
+  pointLightShadow(greenhouseLight)
   scene.add(greenhouseLight)
 
   guestLight = new THREE.PointLight(0xffbe7a, 1.5, 16, 1.5)
   guestLight.position.set(19.0, 3.2, 11.0)
+  pointLightShadow(guestLight)
   scene.add(guestLight)
 
   clinicLight = new THREE.PointLight(0x8eeed4, 1.7, 16, 1.5)
   clinicLight.position.set(19.0, 3.2, -11.0)
+  pointLightShadow(clinicLight)
   scene.add(clinicLight)
 
   for (const k in NPCS) {

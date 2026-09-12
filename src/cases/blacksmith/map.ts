@@ -1,8 +1,8 @@
 import * as THREE from 'three'
 import {
   addLabel, barrel, blocked, blockRect, box, buildingShell, canvasTex, chalkOutline, crate, GW, ITAB, lamp,
-  lampPositions, leatherTex, makeChar, mat, scene, solidHouse, stool, table, tagInteractive, tree, wallPlasterTex,
-  wallRects, woodTex,
+  lampPositions, leatherTex, makeChar, mat, pointLightShadow, scene, solidHouse, stool, table, tagInteractive, tree,
+  wallPlasterTex, wallRects, woodTex,
 } from '../../world'
 import { dist2, rand } from '../../utils'
 import { CLUE_TOTAL } from './clues'
@@ -430,7 +430,8 @@ export function setupMap(worldCtx: WorldContext): void {
   scene.add(embers)
 
   forgeLight = new THREE.PointLight(0xff7733, 1.15, 10.5, 2)
-  forgeLight.position.set(-24.6, 2.2, -18.1)
+  forgeLight.position.set(-24.6, 1.7, -17.4)
+  pointLightShadow(forgeLight)
   scene.add(forgeLight)
 
   tagInteractive(anvil, 'anvil', '铁砧', 'env')

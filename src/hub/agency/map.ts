@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import {
-  addLabel, blockRect, box, buildingShell, canvasTex, fabricTex, makeChar, mat, scene, stool, table, tagInteractive,
-  wallPlasterTex, wallRects, woodTex,
+  addLabel, blockRect, box, buildingShell, canvasTex, fabricTex, makeChar, mat, pointLightShadow, scene, stool,
+  table, tagInteractive, wallPlasterTex, wallRects, woodTex,
 } from '../../world'
 import { dist2, rand } from '../../utils'
 import { G, toast } from '../../state'
@@ -361,6 +361,7 @@ export function setupMap(worldCtx: WorldContext): void {
   scene.add(lampShade)
   const deskLampLight = new THREE.PointLight(0xffc98a, 0.9, 6, 2)
   deskLampLight.position.set(4.4, 1.3, -4.0)
+  pointLightShadow(deskLampLight)
   scene.add(deskLampLight)
   tagInteractive(papers, 'evedesk', '伊芙的办公桌', 'prop')
   addLabel(() => papers.position.clone().add(new THREE.Vector3(0, 1.2, 0)),
@@ -562,10 +563,12 @@ export function setupMap(worldCtx: WorldContext): void {
   scene.add(chandelier)
   chandelierLight = new THREE.PointLight(0xffc98a, 1.35, 17, 2)
   chandelierLight.position.set(0, 2.0, 0.5)
+  pointLightShadow(chandelierLight)
   scene.add(chandelierLight)
 
   fireplaceLight = new THREE.PointLight(0xff9a4a, 0.7, 9, 2)
   fireplaceLight.position.set(-1.6, 1.1, -6.2)
+  pointLightShadow(fireplaceLight)
   scene.add(fireplaceLight)
 
   for (const k in NPCS) {

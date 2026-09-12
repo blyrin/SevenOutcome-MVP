@@ -90,6 +90,7 @@ function animate(): void {
 
   updateInv(dt)
   updateCamera(dt, now)
+  renderer.shadowMap.needsUpdate = true
   composer.render()
 }
 
