@@ -8,7 +8,7 @@ import {
 import { openHist, openInv, refreshObjectives, togglePause } from './ui'
 import { $, clamp, dist2, lerp } from './utils'
 import { applyScanGlow, camera, findPath, interactMeshes, isBlocked, ITAB, NPCS, player, renderer, toG, zoneAt } from './world'
-import { getCurrentCase } from './cases/caseManager'
+import { getCurrentScene } from './cases/caseManager'
 import {
   camOff, camZoom, focusInspection, isCutsceneActive, isInspectionActive, setCamZoom, skipCutscene, snapCamera,
   unfocusInspection,
@@ -332,12 +332,12 @@ export function updatePlayer(dt: number): void {
     }
   }
 
-  const curCase = getCurrentCase()
-  const targetY = curCase?.map?.getHeightAt ? curCase.map.getHeightAt(player.position.x, player.position.z) : 0
+  const curScene = getCurrentScene()
+  const targetY = curScene?.map?.getHeightAt ? curScene.map.getHeightAt(player.position.x, player.position.z) : 0
   player.position.y = lerp(player.position.y, targetY, 1 - Math.exp(-24 * dt))
 
   const zn = zoneAt(player.position.x, player.position.z)
-  const prefix = (getCurrentCase()?.subtitle || '雾杉镇') + ' · '
+  const prefix = (getCurrentScene()?.subtitle || '雾杉镇') + ' · '
   const curArea = zn ? zn.n : '郊野'
   const fullArea = prefix + curArea
   const areaName = $('areaName')
@@ -425,17 +425,17 @@ export function useInteract(id: string): void {
   }
 
   const it = ITAB[id]
-  if (it && it.mesh && it.kind !== 'board') {
+  if (it && it.mesh && it.kind !== 'board' && it.kind !== 'system') {
     const p = it.mesh.getWorldPosition(new THREE.Vector3())
-    const curCase = getCurrentCase()
-    const shots = curCase?.map?.inspectShots
+    const curScene = getCurrentScene()
+    const shots = curScene?.map?.inspectShots
     const shot = shots ? shots[id] : undefined
     focusInspection(p, shot)
   }
 
-  const curCase = getCurrentCase()
-  if (curCase && curCase.map && curCase.map.onInteract) {
-    curCase.map.onInteract(id, {
+  const curScene = getCurrentScene()
+  if (curScene && curScene.map && curScene.map.onInteract) {
+    curScene.map.onInteract(id, {
       G,
       player,
       addClue,

@@ -24,6 +24,9 @@ export function openBoard(): void {
   if (modalOpen()) {
     return
   }
+  if (!getCurrentCase()) {
+    return
+  }
   renderBoard()
   openModal('boardModal')
   if (!hasFlag('boardSeen')) {
@@ -35,6 +38,9 @@ export function openBoard(): void {
 export function renderBoard(): void {
   selClue = null
   const curCase = getCurrentCase()
+  if (!curCase) {
+    return
+  }
   const CLUES = curCase.clues || {}
   const SLOTS = curCase.board?.slots || []
 
@@ -159,6 +165,9 @@ export function initBoardEvents(): void {
   if (btnVerify) {
     btnVerify.onclick = () => {
       const curCase = getCurrentCase()
+      if (!curCase) {
+        return
+      }
       const b = G.board
       const SLOTS = curCase.board?.slots || []
       const CORRECT = curCase.board?.correct || {}
@@ -207,6 +216,9 @@ export function initBoardEvents(): void {
   if (btnSubmit) {
     btnSubmit.onclick = () => {
       const curCase = getCurrentCase()
+      if (!curCase) {
+        return
+      }
       const b = G.board
       const SLOTS = curCase.board?.slots || []
       const boardMsg = $('boardMsg')

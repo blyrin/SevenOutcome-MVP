@@ -199,7 +199,8 @@
     <div class="panel">
       <div class="ptitle" style="font-size:26px">调查暂停</div>
       <button class="btn" id="btnResume">继续调查</button>
-      <button class="btn" id="btnPauseCases">切换案件</button>
+      <button class="btn" id="btnPauseCases">案件档案库</button>
+      <button class="btn" id="btnBackHub">返回事务所</button>
       <button class="btn" id="btnSave">保存进度</button>
       <button class="btn" id="btnLoad">读取存档</button>
       <button class="btn" id="btnMusic">背景音乐：开</button>
@@ -238,23 +239,28 @@
   <div id="intro">
     <div id="introContainer">
       <div id="introLeft">
-        <h1 class="it-main-title" id="introTitle">铁匠之死</h1>
+        <h1 class="it-main-title" id="introTitle">雾杉镇探案辑录</h1>
         <div class="it-synopsis-text" id="introSynopsis">
-          铁匠汉斯倒在冷透的锻炉旁，颅骨遭钝器重击碎裂。<br>
-          沉默战栗的遗孀、惶恐闪烁的学徒、冷眼旁观的债主——风雪欲来的小镇，谎言与苦难在迷雾中无声撕扯。<br>
-          勘查现场、走访证人、拼合证据链，叩问法理与人心。
+          你是雾杉镇唯一在册的私家侦探。<br>
+          在事务所里接取委托、料理每日差事，走进案发现场勘查物证、走访证人，在告示板拼合证据链，做出最终裁决。<br>
+          每一次结案都会写入你的档案——经验、特质与新的委托，将伴你在这座雾气弥漫的小镇继续走下去。
         </div>
         <div class="it-action-row">
-          <button class="btn it-start-btn primary" id="btnStart">开 始 调 查</button>
+          <button class="btn it-start-btn primary" id="btnStart">进 入 事 务 所</button>
+          <button class="btn it-start-btn primary" id="btnContinue" style="display:none">继 续 调 查</button>
+          <button class="btn it-start-btn" id="btnNewGame" style="display:none">重 新 开 始</button>
         </div>
       </div>
+    </div>
+  </div>
 
-      <div id="introRight">
-        <div class="it-right-header">
-          <span class="it-right-title">案件卷宗库</span>
-        </div>
-        <div id="introCaseList"></div>
-      </div>
+  <!-- 每日委托板 -->
+  <div class="modal" id="questModal">
+    <div class="panel" style="max-width:600px">
+      <div class="pclose" data-close="questModal">✕</div>
+      <div class="ptitle" style="font-size:22px">事务所 · 每日委托板</div>
+      <div class="lu-sub" id="questDate"></div>
+      <div id="questList"></div>
     </div>
   </div>
 

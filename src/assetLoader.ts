@@ -1,4 +1,4 @@
-import type { CaseDefinition } from './types'
+import type { CaseDefinition, HubDefinition } from './types'
 
 const assetCache = new Map<string, string>()
 
@@ -16,7 +16,7 @@ export function clearAssetCache(): void {
   assetCache.clear()
 }
 
-export function collectCaseAssetUrls(caseDef: CaseDefinition): string[] {
+export function collectCaseAssetUrls(caseDef: CaseDefinition | HubDefinition): string[] {
   const urls = new Set<string>()
   if (caseDef.audio?.bgm) {
     urls.add(caseDef.audio.bgm)

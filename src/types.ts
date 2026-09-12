@@ -211,6 +211,45 @@ export interface CaseMeta {
   cutscene?: CutsceneDefinition
 }
 
+export interface HubMeta {
+  chapterTag?: string
+  badgeText?: string
+  title?: string
+  subtitle?: string
+  enTitle?: string
+  synopsis?: string
+  defaultArea?: string
+  startNpc?: string
+  initialPlayerPos?: [number, number, number]
+  startHint?: string
+}
+
+export interface HubMap {
+  setupMap: (ctx: WorldContext) => void
+  update?: (dt: number, now: number) => void
+  onInteract?: (id: string, ctx: InteractContext) => void
+  onFlagChange?: (k: string, v: FlagValue, ctx: FlagChangeContext) => void
+  getObjectives?: (G: GameState) => ObjectivesResult
+  applyWorldFromFlags?: (G: GameState) => void
+  zoneAt?: (x: number, z: number) => { id: string; n: string } | null
+  getHeightAt?: (x: number, z: number) => number
+  NPCS?: Record<string, NpcConfig | NpcEntity>
+  inspectShots?: Record<string, InspectShot>
+}
+
+export interface HubDefinition {
+  id: string
+  title: string
+  subtitle?: string
+  meta: HubMeta
+  audio?: {
+    bgm?: string
+    voiceDir?: string
+  }
+  dialogue: DialogueDefinition
+  map: HubMap
+}
+
 export interface ObjectivesResult {
   list?: Array<{ t: string; d: boolean }>
   notStartedText?: string
@@ -303,6 +342,21 @@ export interface HistoryItem {
   t: string
 }
 
+export interface DailySaveState {
+  date: string
+  offered: string[]
+  accepted: string[]
+  done: string[]
+}
+
+export interface DailyQuestDef {
+  id: string
+  title: string
+  desc: string
+  xp: number
+  flag: string
+}
+
 export interface GameState {
   attrs: AttrStats
   xp: number
@@ -318,6 +372,9 @@ export interface GameState {
   history: HistoryItem[]
   verdict: string | null
   flavorXP: Record<string, number>
+  assignment: string | null
+  completedCases: string[]
+  daily: DailySaveState
   started: boolean
   musicOn: boolean
   voiceOn: boolean

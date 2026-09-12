@@ -1,5 +1,5 @@
 import { G } from './state'
-import { getCurrentCase } from './cases/caseManager'
+import { getCurrentScene } from './cases/caseManager'
 import { getCachedAssetUrl } from './assetLoader'
 
 export interface AudioContextContainer {
@@ -17,8 +17,8 @@ let fadeTimer: number | null = null
 let voiceAudio: HTMLAudioElement | null = null
 
 function getCaseBgmUrl(): string {
-  const curCase = getCurrentCase()
-  return curCase?.audio?.bgm || `${ import.meta.env.BASE_URL }cases/blacksmith/audio/bgm.ogg`
+  const curScene = getCurrentScene()
+  return curScene?.audio?.bgm || `${ import.meta.env.BASE_URL }cases/blacksmith/audio/bgm.ogg`
 }
 
 function fadeBgm(target: number, duration = 1200): void {

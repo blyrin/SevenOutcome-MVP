@@ -3,7 +3,11 @@ import { playBgm, stopVoice } from '../audio'
 import { G, resetCaseState } from '../state'
 import { setupCaseUI } from '../ui'
 import { collectCaseAssetUrls, preloadAssetFiles } from '../assetLoader'
-import type { CaseDefinition, CaseManifest } from '../types'
+import type { CaseDefinition, CaseManifest, HubDefinition } from '../types'
+
+export const HUB_CASE_ID = 'agency'
+
+export const CASE_ORDER: string[] = ['blacksmith', 'manor']
 
 export const caseManifests: Record<string, CaseManifest> = {
   blacksmith: {
@@ -53,16 +57,20 @@ export const caseManifests: Record<string, CaseManifest> = {
 export const registry: Record<string, CaseDefinition> = {}
 
 export let currentCase: CaseDefinition | null = null
-let selectedCaseId = 'blacksmith'
+export let currentHub: HubDefinition | null = null
 
-export function getSelectedCaseId(): string {
-  return selectedCaseId
+export function getCurrentCase(): CaseDefinition | null {
+  return currentCase
 }
 
-export function setSelectedCaseId(id: string): void {
-  if (caseManifests[id]) {
-    selectedCaseId = id
-  }
+export function getCurrentHub(): HubDefinition | null {
+  return currentHub
+}
+
+export type GameScene = CaseDefinition | HubDefinition
+
+export function getCurrentScene(): GameScene | null {
+  return currentCase || currentHub
 }
 
 export function getAllManifests(): Record<string, CaseManifest> {
@@ -73,12 +81,24 @@ export function getManifest(id: string): CaseManifest | undefined {
   return caseManifests[id]
 }
 
-export function getCurrentCase(): CaseDefinition {
-  return (currentCase || registry[selectedCaseId]) as CaseDefinition
+export function isCaseUnlocked(id: string): boolean {
+  const idx = CASE_ORDER.indexOf(id)
+  if (idx < 0) {
+    return false
+  }
+  if (idx === 0) {
+    return true
+  }
+  return G.completedCases.includes(CASE_ORDER[idx - 1])
 }
 
-export function getAllCases(): Record<string, CaseDefinition> {
-  return registry
+export function nextCaseId(): string | null {
+  for (const id of CASE_ORDER) {
+    if (isCaseUnlocked(id) && !G.completedCases.includes(id)) {
+      return id
+    }
+  }
+  return null
 }
 
 export async function loadCaseModule(caseId: string): Promise<CaseDefinition> {
@@ -94,35 +114,68 @@ export async function loadCaseModule(caseId: string): Promise<CaseDefinition> {
   return caseDef
 }
 
-export function loadCase(caseDef: CaseDefinition | string): CaseDefinition | null {
-  if (typeof caseDef === 'string') {
-    caseDef = registry[caseDef]
+async function preloadSceneAudio(
+  def: CaseDefinition | HubDefinition,
+  onProgress?: (pct: number, status: string) => void,
+): Promise<void> {
+  if (onProgress) {
+    onProgress(5, '正在检索卷宗档案…')
   }
-  if (!caseDef) {
-    return null
+
+  const assetUrls = collectCaseAssetUrls(def as CaseDefinition)
+  const totalAssets = assetUrls.length
+
+  if (totalAssets > 0) {
+    await preloadAssetFiles(assetUrls, (loaded, total) => {
+      const pct = Math.round(20 + (loaded / total) * 62)
+      if (onProgress) {
+        onProgress(pct, `正在预载录音与关键证言 (${ loaded }/${ total })…`)
+      }
+    })
   }
+
+  if (onProgress) {
+    onProgress(86, '正在构筑场景 3D 空间与物理阻挡…')
+  }
+}
+
+function activateScene(def: CaseDefinition | HubDefinition): void {
+  stopVoice()
   clearWorldObjects()
   resetGrid()
 
-  if (caseDef.meta && caseDef.meta.initialPlayerPos) {
-    player.position.set(...caseDef.meta.initialPlayerPos)
+  const pos = def.meta && def.meta.initialPlayerPos
+  if (pos) {
+    player.position.set(...pos)
     player.visible = true
   }
 
-  if (caseDef.map && caseDef.map.setupMap) {
-    caseDef.map.setupMap({ scene, player })
+  if (def.map && def.map.setupMap) {
+    def.map.setupMap({ scene, player })
   }
 
   resetCaseState()
-  currentCase = caseDef
-  registry[caseDef.id] = caseDef
-  selectedCaseId = caseDef.id
 
-  if (caseDef.audio && caseDef.audio.bgm) {
-    playBgm(caseDef.audio.bgm)
+  if ('clues' in def) {
+    currentCase = def
+    currentHub = null
+    registry[def.id] = def
+  } else {
+    currentHub = def
+    currentCase = null
   }
-  setupCaseUI(currentCase)
-  return currentCase
+
+  if (G.started && def.audio && def.audio.bgm) {
+    playBgm(def.audio.bgm)
+  }
+
+  setupCaseUI(def)
+
+  if (renderer && scene && camera) {
+    try {
+      renderer.compile(scene, camera)
+    } catch (e) {}
+  }
 }
 
 export async function loadCaseWithAssets(
@@ -134,59 +187,26 @@ export async function loadCaseWithAssets(
   }
 
   const caseDef = await loadCaseModule(caseId)
-  if (onProgress) {
-    onProgress(18, '已解析案卷档案，正在检索录音与物证清单…')
-  }
-
-  const assetUrls = collectCaseAssetUrls(caseDef)
-  const totalAssets = assetUrls.length
-
-  if (totalAssets > 0) {
-    await preloadAssetFiles(assetUrls, (loaded, total) => {
-      const pct = Math.round(20 + (loaded / total) * 62)
-      if (onProgress) {
-        onProgress(pct, `正在预载案情录音与关键证言 (${ loaded }/${ total })…`)
-      }
-    })
-  }
-
-  if (onProgress) {
-    onProgress(86, '正在构筑案发现场 3D 空间与物理阻挡…')
-  }
-
-  stopVoice()
-  clearWorldObjects()
-  resetGrid()
-
-  if (caseDef.meta && caseDef.meta.initialPlayerPos) {
-    player.position.set(...caseDef.meta.initialPlayerPos)
-    player.visible = true
-  }
-
-  if (caseDef.map && caseDef.map.setupMap) {
-    caseDef.map.setupMap({ scene, player })
-  }
-
-  resetCaseState()
-  currentCase = caseDef
-  registry[caseDef.id] = caseDef
-  selectedCaseId = caseDef.id
-
-  if (G.started && caseDef.audio && caseDef.audio.bgm) {
-    playBgm(caseDef.audio.bgm)
-  }
-
-  setupCaseUI(currentCase)
-
-  if (renderer && scene && camera) {
-    try {
-      renderer.compile(scene, camera)
-    } catch (e) {}
-  }
+  await preloadSceneAudio(caseDef, onProgress)
+  activateScene(caseDef)
 
   if (onProgress) {
     onProgress(100, '调查现场已准备就绪！')
   }
 
   return caseDef
+}
+
+export async function loadHubWithAssets(
+  onProgress?: (pct: number, status: string) => void,
+): Promise<HubDefinition> {
+  const hubDef = await import('../hub/agency').then(m => m.agencyHub)
+  await preloadSceneAudio(hubDef, onProgress)
+  activateScene(hubDef)
+
+  if (onProgress) {
+    onProgress(100, '事务所已准备就绪！')
+  }
+
+  return hubDef
 }

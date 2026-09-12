@@ -2,13 +2,16 @@ import { sfx } from './audio'
 import { openBoard } from './board'
 import { setTimeScaleT } from './controls'
 import { closeModal, confirmBox, G, openModal, toast } from './state'
-import { openCaseModal, refreshObjectives, switchToCase } from './ui'
+import { autoSave, openCaseModal, refreshObjectives, switchToCase, switchToHub } from './ui'
 import { $ } from './utils'
 import { getCurrentCase } from './cases/caseManager'
 
 export function openTrial(wrongPath: boolean): void {
   closeModal('boardModal')
   const curCase = getCurrentCase()
+  if (!curCase) {
+    return
+  }
   const tl = $('tlList')
   if (tl) {
     tl.innerHTML = ''
@@ -66,6 +69,11 @@ export function openTrial(wrongPath: boolean): void {
 export function applyVerdict(v: string): void {
   closeModal('trialModal')
   G.verdict = v
+  const curCase = getCurrentCase()
+  if (curCase && !G.completedCases.includes(curCase.id)) {
+    G.completedCases.push(curCase.id)
+  }
+  autoSave()
   sfx('verdict')
   setTimeScaleT(0)
   refreshObjectives()
@@ -82,7 +90,7 @@ export function showEpilogue(v: string): void {
   if (!box) return
   box.innerHTML = ''
 
-  const epiData = curCase.trial?.getEpilogueData ? curCase.trial.getEpilogueData(v, G) : { ps: [], stats: [] }
+  const epiData = curCase?.trial?.getEpilogueData ? curCase.trial.getEpilogueData(v, G) : { ps: [], stats: [] }
   const ps = epiData.ps || []
 
   ps.forEach((p, i) => {
@@ -101,40 +109,44 @@ export function showEpilogue(v: string): void {
     st.classList.add('on')
     const statsHtml = (epiData.stats || []).map(
       s => `<div class="stat"><div class="sv">${ s.v }</div><div class="sk">${ s.k }</div></div>`).join('')
-    const isFirstCase = curCase?.id === 'blacksmith'
     st.innerHTML = `<div id="endName">${ epiData.endName || '' }</div><div id="endQuote">${ epiData.quote || '' }</div>
   <div id="statGrid">
     ${ statsHtml }
   </div>
   <div class="epi-note">${ epiData.note || '案件侦查已归档' }</div>
   <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px">
-    ${ isFirstCase ? '<button class="btn primary" id="btnNextManor">开启第二章 · 鸦羽庄园的秘毒</button>' : '' }
+    <button class="btn primary" id="btnBackAgency">返回事务所</button>
     <button class="btn ghost" id="btnOpenCaseArchive">案件档案库</button>
-    <button class="btn" id="btnEpilogueReload">重新调查</button>
+    <button class="btn" id="btnEpilogueRetry">重新调查</button>
   </div>`
 
-    const reloadBtn = $('btnEpilogueReload')
-    if (reloadBtn) {
-      reloadBtn.onclick = () => location.reload()
+  const retryBtn = $('btnEpilogueRetry')
+  if (retryBtn) {
+    retryBtn.onclick = () => {
+      if (epi) epi.classList.remove('on')
+      st.classList.remove('on')
+      setTimeScaleT(1)
+      const cur = getCurrentCase()
+      if (cur && cur.id) {
+        switchToCase(cur.id)
+      }
     }
+  }
 
-    if (isFirstCase) {
-      const btnNext = $('btnNextManor')
-      if (btnNext) {
-        btnNext.onclick = () => {
-          if (epi) epi.classList.remove('on')
-          st.classList.remove('on')
-          setTimeScaleT(1)
-          switchToCase('manor')
-          toast('已开启第二章 · 鸦羽庄园的秘毒')
-        }
-      }
+  const btnBack = $('btnBackAgency')
+  if (btnBack) {
+    btnBack.onclick = () => {
+      if (epi) epi.classList.remove('on')
+      st.classList.remove('on')
+      setTimeScaleT(1)
+      switchToHub()
     }
-    const btnArchive = $('btnOpenCaseArchive')
-    if (btnArchive) {
-      btnArchive.onclick = () => {
-        openCaseModal()
-      }
+  }
+  const btnArchive = $('btnOpenCaseArchive')
+  if (btnArchive) {
+    btnArchive.onclick = () => {
+      openCaseModal()
     }
-  }, 800 + ps.length * 1900 + 1200)
+  }
+}, 800 + ps.length * 1900 + 1200)
 }

@@ -4,7 +4,7 @@ import { G, toast } from './state'
 import { refreshObjectives } from './ui'
 import { $, ATTR_LABELS } from './utils'
 import { NPCS } from './world'
-import { getCurrentCase } from './cases/caseManager'
+import { getCurrentScene } from './cases/caseManager'
 import { focusDialogue, unfocusDialogue } from './camera'
 import type { AttrKey, DialogueChoice, DialogueNode, DialogueTree, NpcProfile } from './types'
 
@@ -24,14 +24,14 @@ export let lastDlgNpc = ''
 
 export const NPC_PROFILES: Record<string, NpcProfile> = new Proxy({} as Record<string, NpcProfile>, {
   get(target, prop: string) {
-    const cur = getCurrentCase()
+    const cur = getCurrentScene()
     if (cur && cur.dialogue && cur.dialogue.profiles) {
       return cur.dialogue.profiles[prop]
     }
     return target[prop]
   },
   has(target, prop: string) {
-    const cur = getCurrentCase()
+    const cur = getCurrentScene()
     if (cur && cur.dialogue && cur.dialogue.profiles) {
       return prop in cur.dialogue.profiles
     }
@@ -52,8 +52,8 @@ export function startDialogue(id: string): void {
   document.body.classList.add('dlg')
   setTimeScaleT(0.15)
   focusDialogue(id)
-  const curCase = getCurrentCase()
-  const trees = curCase && curCase.dialogue ? curCase.dialogue.trees : null
+  const curScene = getCurrentScene()
+  const trees = curScene && curScene.dialogue ? curScene.dialogue.trees : null
   const D = trees && trees[id] ? trees[id]() : null
   if (!D) {
     endDialogue()
@@ -112,8 +112,8 @@ export function goNode(D: DialogueTree, nid: string): void {
     dlgText.textContent = ''
   }
 
-  const curCase = getCurrentCase()
-  const findVoiceUrl = curCase?.dialogue?.findVoiceUrl
+  const curScene = getCurrentScene()
+  const findVoiceUrl = curScene?.dialogue?.findVoiceUrl
   const voiceUrl = node.voiceUrl || (findVoiceUrl ? findVoiceUrl(node.tx) : null)
   if (voiceUrl) {
     playVoice(voiceUrl)

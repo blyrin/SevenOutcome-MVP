@@ -7,7 +7,7 @@ import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js'
 import { VignetteShader } from 'three/examples/jsm/shaders/VignetteShader.js'
 import { $, clamp, rand } from './utils'
 import { G, setFlag } from './state'
-import { getCurrentCase } from './cases/caseManager'
+import { getCurrentCase, getCurrentScene } from './cases/caseManager'
 import type { ColorLike, InteractiveItem, InteractKind, NpcEntity, SolidHouseOptions, WorldLabel } from './types'
 
 export const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
@@ -1494,28 +1494,28 @@ player.visible = false
 
 export const NPCS: Record<string, NpcEntity> = new Proxy({} as Record<string, NpcEntity>, {
   get(target: Record<string, NpcEntity>, prop: string) {
-    const cur = getCurrentCase()
+    const cur = getCurrentScene()
     if (cur && cur.map && cur.map.NPCS) {
       return (cur.map.NPCS as Record<string, NpcEntity>)[prop]
     }
     return target[prop]
   },
   ownKeys() {
-    const cur = getCurrentCase()
+    const cur = getCurrentScene()
     if (cur && cur.map && cur.map.NPCS) {
       return Reflect.ownKeys(cur.map.NPCS)
     }
     return []
   },
   getOwnPropertyDescriptor(target: Record<string, NpcEntity>, prop: string) {
-    const cur = getCurrentCase()
+    const cur = getCurrentScene()
     if (cur && cur.map && cur.map.NPCS && prop in cur.map.NPCS) {
       return { enumerable: true, configurable: true, value: (cur.map.NPCS as Record<string, NpcEntity>)[prop] }
     }
     return undefined
   },
   has(target: Record<string, NpcEntity>, prop: string) {
-    const cur = getCurrentCase()
+    const cur = getCurrentScene()
     if (cur && cur.map && cur.map.NPCS) {
       return prop in cur.map.NPCS
     }
@@ -1634,7 +1634,7 @@ export function clearWorldObjects(): void {
 }
 
 export function zoneAt(x: number, z: number): { id: string; n: string } | null {
-  const cur = getCurrentCase()
+  const cur = getCurrentScene()
   if (cur && cur.map && cur.map.zoneAt) {
     return cur.map.zoneAt(x, z) || null
   }
@@ -1642,7 +1642,7 @@ export function zoneAt(x: number, z: number): { id: string; n: string } | null {
 }
 
 export function applyWorldFromFlags(): void {
-  const cur = getCurrentCase()
+  const cur = getCurrentScene()
   if (cur && cur.map && cur.map.applyWorldFromFlags) {
     cur.map.applyWorldFromFlags(G)
   }

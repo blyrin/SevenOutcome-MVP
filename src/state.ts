@@ -1,7 +1,7 @@
 import { sfx } from './audio'
 import { openLevelup, refreshHUD, refreshObjectives } from './ui'
 import { $, ATTR_LABELS } from './utils'
-import { getCurrentCase } from './cases/caseManager'
+import { getCurrentCase, getCurrentScene } from './cases/caseManager'
 import type { AttrKey, Clue, FlagValue, GameState } from './types'
 
 export const G: GameState = {
@@ -19,6 +19,9 @@ export const G: GameState = {
   history: [],
   verdict: null,
   flavorXP: {},
+  assignment: null,
+  completedCases: [],
+  daily: { date: '', offered: [], accepted: [], done: [] },
   started: false,
   musicOn: true,
   voiceOn: true,
@@ -165,7 +168,7 @@ export function addClue(id: string, silent?: boolean): void {
     sfx('clue')
     showClueCard(c)
     gainXP(15, '获得线索')
-    if (curCase.items && curCase.items[id] && !G.inventory.includes(id)) {
+    if (curCase && curCase.items && curCase.items[id] && !G.inventory.includes(id)) {
       G.inventory.push(id)
     }
   }
@@ -202,9 +205,9 @@ export function showClueCard(c: Clue): void {
 }
 
 export function watchForeshadow(k: string): void {
-  const curCase = getCurrentCase()
-  if (curCase && curCase.map && curCase.map.onFlagChange) {
-    curCase.map.onFlagChange(k, G.flags[k], { G, setFlag, hasFlag, toast, sfx, refreshObjectives })
+  const curScene = getCurrentScene()
+  if (curScene && curScene.map && curScene.map.onFlagChange) {
+    curScene.map.onFlagChange(k, G.flags[k], { G, setFlag, hasFlag, toast, sfx, refreshObjectives })
   }
 }
 
@@ -216,14 +219,27 @@ export function foreshadowOnClue(clueId: string): void {
 }
 
 export function resetCaseState(): void {
+  const keepZones: Record<string, number> = {}
+  for (const k in G.zones) {
+    if (k.startsWith('hub_')) {
+      keepZones[k] = G.zones[k]
+    }
+  }
+  G.zones = keepZones
+  const keepFlavor: Record<string, number> = {}
+  for (const k in G.flavorXP) {
+    if (k.startsWith('hub_')) {
+      keepFlavor[k] = G.flavorXP[k]
+    }
+  }
+  G.flavorXP = keepFlavor
   G.flags = {}
   G.clues = []
   G.inventory = []
-  G.zones = {}
   G.talked = {}
   G.board = { killer: null, weapon: null, motive: null, method: null }
   G.history = []
   G.verdict = null
-  G.flavorXP = {}
   G.checks = 0
+  G.assignment = null
 }

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { camera, NPCS, player } from './world'
 import { $, clamp } from './utils'
-import { getCurrentCase } from './cases/caseManager'
+import { getCurrentScene } from './cases/caseManager'
 import type { CutsceneDefinition, CutsceneShot, InspectShot } from './types'
 
 export type CameraMode = 'follow' | 'dialogue' | 'cutscene' | 'transition' | 'inspection'
@@ -147,8 +147,8 @@ function showShotUI(shot: CutsceneShot): void {
 
   setTimeout(() => {
     if (badgeEl) {
-      const cur = getCurrentCase()
-      badgeEl.textContent = cur?.meta?.chapterTag || cur?.meta?.caseCode || 'CASE FILE'
+      const cur = getCurrentScene()
+      badgeEl.textContent = cur?.meta?.chapterTag || 'CASE FILE'
     }
     if (titleEl) {
       if (shot.title) {
