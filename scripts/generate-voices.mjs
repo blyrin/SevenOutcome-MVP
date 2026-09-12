@@ -26,20 +26,36 @@ if (!apiKey) {
   process.exit(1)
 }
 
-function findCaseDialoguePath(cid) {
-  const tsPath = path.join(rootDir, 'src', 'cases', cid, 'dialogueLines.ts')
-  if (fs.existsSync(tsPath)) return tsPath
-  const jsPath = path.join(rootDir, 'src', 'cases', cid, 'dialogueLines.js')
-  if (fs.existsSync(jsPath)) return jsPath
+const SOURCE_ROOTS = [
+  { dir: 'cases', src: path.join(rootDir, 'src', 'cases'),
+    outDir: id => path.join(rootDir, 'public', 'cases', id, 'audio', 'voice') },
+  { dir: 'hub', src: path.join(rootDir, 'src', 'hub'),
+    outDir: id => path.join(rootDir, 'public', 'hub', id, 'audio', 'voice') },
+]
+
+function findDialogueModule(id) {
+  for (const root of SOURCE_ROOTS) {
+    for (const ext of ['ts', 'js']) {
+      const modulePath = path.join(root.src, id, `dialogueLines.${ ext }`)
+      if (fs.existsSync(modulePath)) {
+        return { modulePath, outDir: root.outDir(id) }
+      }
+    }
+  }
   return null
 }
 
-function getAvailableCases() {
-  const casesDir = path.join(rootDir, 'src', 'cases')
-  if (!fs.existsSync(casesDir)) return []
-  return fs.readdirSync(casesDir, { withFileTypes: true })
-    .filter(d => d.isDirectory() && Boolean(findCaseDialoguePath(d.name)))
-    .map(d => d.name)
+function getAvailableScenes() {
+  const ids = []
+  for (const root of SOURCE_ROOTS) {
+    if (!fs.existsSync(root.src)) continue
+    for (const d of fs.readdirSync(root.src, { withFileTypes: true })) {
+      if (d.isDirectory() && findDialogueModule(d.name)) {
+        ids.push(d.name)
+      }
+    }
+  }
+  return ids
 }
 
 function resolveVoicePrompt(item, npcVoiceDesigns) {
@@ -112,17 +128,17 @@ async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function processCase(caseId, targetId, forceAll) {
-  const caseModulePath = findCaseDialoguePath(caseId)
-  if (!caseModulePath) {
-    console.error(`Error: Case dialogueLines not found for case "${ caseId }"!`)
+async function processScene(sceneId, targetId, forceAll) {
+  const moduleInfo = findDialogueModule(sceneId)
+  if (!moduleInfo) {
+    console.error(`Error: dialogueLines not found for scene "${ sceneId }"!`)
     return { generated: 0, skipped: 0, total: 0, failed: 0 }
   }
 
-  const caseModule = await import(`file://${ caseModulePath.replace(/\\/g, '/') }`)
+  const caseModule = await import(`file://${ moduleInfo.modulePath.replace(/\\/g, '/') }`)
   const { DIALOGUE_LINES, NPC_VOICE_DESIGNS } = caseModule
   const npcVoiceDesigns = NPC_VOICE_DESIGNS || {}
-  const outDir = path.join(rootDir, 'public', 'cases', caseId, 'audio', 'voice')
+  const outDir = moduleInfo.outDir
 
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir, { recursive: true })
@@ -141,11 +157,11 @@ async function processCase(caseId, targetId, forceAll) {
     : allLines
 
   if (targetId && lines.length === 0) {
-    console.error(`Error: Dialogue ID "${ targetId }" not found in case "${ caseId }"!`)
+    console.error(`Error: Dialogue ID "${ targetId }" not found in scene "${ sceneId }"!`)
     return { generated: 0, skipped: 0, total: 0, failed: 1 }
   }
 
-  console.log(`\n=== Case: [${ caseId }] (${ lines.length } dialogue lines) ===`)
+  console.log(`\n=== Scene: [${ sceneId }] (${ lines.length } dialogue lines) ===`)
   let generated = 0
   let skipped = 0
   let failed = 0
@@ -223,24 +239,24 @@ async function processCase(caseId, targetId, forceAll) {
 async function main() {
   const forceAll = process.argv.includes('--force')
   const positionalArgs = process.argv.slice(2).filter(a => !a.startsWith('--'))
-  const availableCases = getAvailableCases()
+  const availableScenes = getAvailableScenes()
 
-  let casesToRun = []
+  let scenesToRun = []
   let targetId = null
 
   if (positionalArgs.length === 0 || positionalArgs[0] === 'all') {
-    casesToRun = availableCases
-  } else if (availableCases.includes(positionalArgs[0])) {
-    casesToRun = [positionalArgs[0]]
+    scenesToRun = availableScenes
+  } else if (availableScenes.includes(positionalArgs[0])) {
+    scenesToRun = [positionalArgs[0]]
     if (positionalArgs.length >= 2) {
       targetId = positionalArgs[1]
     }
   } else {
     targetId = positionalArgs[0]
-    if (positionalArgs.length >= 2 && availableCases.includes(positionalArgs[1])) {
-      casesToRun = [positionalArgs[1]]
+    if (positionalArgs.length >= 2 && availableScenes.includes(positionalArgs[1])) {
+      scenesToRun = [positionalArgs[1]]
     } else {
-      casesToRun = availableCases
+      scenesToRun = availableScenes
     }
   }
 
@@ -249,8 +265,8 @@ async function main() {
   let totalCount = 0
   let totalFailed = 0
 
-  for (const cid of casesToRun) {
-    const stats = await processCase(cid, targetId, forceAll)
+  for (const sid of scenesToRun) {
+    const stats = await processScene(sid, targetId, forceAll)
     totalGenerated += stats.generated
     totalSkipped += stats.skipped
     totalCount += stats.total

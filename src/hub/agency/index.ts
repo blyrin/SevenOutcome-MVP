@@ -1,4 +1,5 @@
 import { DLG as DIALOGUE_TREES, NPC_PROFILES } from './dialogueData'
+import { DIALOGUE_LINES, findVoiceUrl, line, NPC_VOICE_DESIGNS } from './dialogueLines'
 import * as map from './map'
 import type { HubDefinition } from '../../types'
 
@@ -20,10 +21,15 @@ export const agencyHub: HubDefinition = {
   },
   audio: {
     bgm: `${ import.meta.env.BASE_URL }hub/agency/audio/bgm.ogg`,
+    voiceDir: `${ import.meta.env.BASE_URL }hub/agency/audio/voice/`,
   },
   dialogue: {
     profiles: NPC_PROFILES,
     trees: DIALOGUE_TREES,
+    lines: DIALOGUE_LINES,
+    voiceDesigns: NPC_VOICE_DESIGNS,
+    findVoiceUrl,
+    line,
   },
   map,
 }
